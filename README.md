@@ -1,6 +1,6 @@
 # ImmunoTyper
 
-A Immunoglobulin Heavy Chain Variable Gene genotyping and CNV analysis tool for WGS PacBio Long Reads using 
+A Immunoglobulin Heavy Chain Variable Gene genotyping and CNV analysis tool for WGS PacBio Long Reads using ILP Optimization.
 
 
 ## Dependencies:
@@ -15,8 +15,9 @@ A Immunoglobulin Heavy Chain Variable Gene genotyping and CNV analysis tool for 
 
 ## Running ImmunoTyper:
 
-ImmunoTyper is run from the src/immunotyper.py script via the command 'python immunotyper.py'.
+ImmunoTyper is run from the `src/immunotyper.py` script via the command `python immunotyper.py`.
 
+```
 usage: immunotyper.py [-h] [--dsf DSF] [--poa POA] [--spoa SPOA]
                       [--minimap MINIMAP] [--blasr BLASR]
                       [--max_copy MAX_COPY] [--debug_log_path DEBUG_LOG_PATH]
@@ -52,4 +53,4 @@ optional arguments:
                         Used when subreads have already been isolated (i.e. in
                         simulated data)
 
-
+```
