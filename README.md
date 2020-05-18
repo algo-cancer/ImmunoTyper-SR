@@ -5,13 +5,18 @@ A Immunoglobulin Heavy Chain Variable Gene genotyping and CNV analysis tool for 
 
 ## Dependencies:
 
+You can install the following dependencies by running `./install-dependencies.sh`
+
 - [Poa](https://sourceforge.net/projects/poamsa/)
 - [SPOA](https://github.com/rvaser/spoa)
-- [Biopython](https://biopython.org)
 - [Dense Subgraph Finder from the IG Repertoire Constructor Toolset](http://yana-safonova.github.io/ig_repertoire_constructor/)
-- [Gurobi](http://www.gurobi.com) via the gurobipy package
 - [Minimap2](https://github.com/lh3/minimap2)
+
+The following python dependencies should be installed using your prefered method (pip, conda etc)
+- [Biopython](https://biopython.org)
+- [Gurobi](http://www.gurobi.com) via the gurobipy package
 - [Blasr](https://github.com/PacificBiosciences/blasr) (easiest to install [via Conda](https://anaconda.org/bioconda/blasr))
+
 
 ## Running ImmunoTyper:
 
