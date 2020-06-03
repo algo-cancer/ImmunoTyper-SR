@@ -5,6 +5,8 @@ A Immunoglobulin Heavy Chain Variable Gene genotyping and CNV analysis tool for 
 
 ## Dependencies:
 
+ImmunoTyper is developed using python 2.7 for compatability with legacy computing clusters.
+
 You can install the following dependencies by running `./install-dependencies.sh`
 
 - [Poa](https://sourceforge.net/projects/poamsa/)
@@ -16,6 +18,11 @@ The following python dependencies should be installed using your prefered method
 - [Biopython](https://biopython.org)
 - [Gurobi](http://www.gurobi.com) via the gurobipy package
 - [Blasr](https://github.com/PacificBiosciences/blasr) (easiest to install [via Conda](https://anaconda.org/bioconda/blasr))
+
+You can create a conda environment containing all necessary python devendecies by running 
+`conda env create -f environment.yml`
+You can then activate the environment using 
+`conda activate immunotyper` 
 
 
 ## Running ImmunoTyper:
