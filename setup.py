@@ -1,9 +1,10 @@
-from setuptools import find_packages, setup
+from setuptools import setup, find_packages
+import os
 
 setup(
-    name='immunotyper',
-    packages=find_packages("src"),
-    package_dir={"": "src"},
+    name="immunotyper",
+    packages=['immunotyper'],
+    package_dir={'':'src'},
     version='0.1.0',
     description='IGHV genotyper tool using PacBio WGS Long Reads',
     author='Michael Ford',

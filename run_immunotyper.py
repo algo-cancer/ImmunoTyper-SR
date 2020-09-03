@@ -1,6 +1,6 @@
 import argparse
-import igh
-from common import fasta_from_seq
+from src.immunotyper import igh
+from src.immunotyper.common import fasta_from_seq
 
 parser = argparse.ArgumentParser(description='ImmunoTyper: IGHV Genotyping using PacBio Long Reads')
 parser.add_argument('reads_path', type=str, help='Input FASTA file of PacBio reads')
