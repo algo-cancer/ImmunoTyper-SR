@@ -27,7 +27,8 @@ In addition to the above, you will need
 
 ```conda create -n immunotyper-SR -c bioconda python=3.8 bwa
 conda activate immunotyper-SR
-pip install <binary.tar.gz>```
+pip install <binary.tar.gz>
+```
 
 2.  [Gurobi](https://www.gurobi.com/) solver configured with a valid license. Licenses are [free for academic purposes](https://www.gurobi.com/downloads/end-user-license-agreement-academic/).
 
