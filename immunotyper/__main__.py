@@ -10,9 +10,6 @@ from immunotyper.candidate_builder_classes import BwaMappingsCandidateBuilder
 from immunotyper.lpinterface import ShortReadModelTotalErrorDiscardObj
 from immunotyper.common import resource_path
 
-initialize_logger()
-
-
 parser = argparse.ArgumentParser(description='ImmunoTyper-SR: Ig Genotyping using Short Read WGS')
 
 parser.add_argument('bam_path', type=str, help='Input BAM file')
@@ -125,7 +122,8 @@ def run_immunotyper(bam_path: str,  hg37: bool=False,
         lengths.append(len(r))
         i+=1
         if i>100: break
-    READ_LENGTH = mean(lengths)
+    READ_LENGTH = int(mean(lengths))
+    log.info(f"Sampled read length: {READ_LENGTH}")
 
     allele_db.make_landmarks(landmark_groups*landmarks_per_group, READ_LENGTH, READ_DEPTH, VARIANCE, EDGE_VARIANCE, 50, landmark_groups)
 
