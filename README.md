@@ -34,6 +34,22 @@ pip install <binary.tar.gz>
 
 To check that gurobi is correctly configured, run `gurobi_cl` from a shell.
 
+### Installing from source
+
+If the binary fails to install for whatever reason, you can build the tool from source as follows:
+
+```
+conda create -n immunotyper-SR -c bioconda python=3.8 bwa
+conda activate immunotyper-SR
+git clone git@github.com:algo-cancer/ImmunoTyper-SR.git ./ImmunoTyper-SR
+cd ImmunoTyper-SR
+python -m pip install --upgrade  build
+python -m build
+pip install dist/<.tar.gz or .whl build>
+```
+
+
+
 ## Running ImmunoTyper-SR:
 
 After installation with pip, simply use the command `immunotyper-SR`. The only required input is a bam file, and output is a txt file of allele calls save in the current working direction, with the name `<bam_file>-IGHV_functional_allele_calls.txt`. 
