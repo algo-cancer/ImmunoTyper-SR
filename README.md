@@ -1,68 +1,72 @@
-# ImmunoTyper
+# ImmunoTyper-SR
 
-A Immunoglobulin Heavy Chain Variable Gene genotyping and CNV analysis tool for WGS PacBio Long Reads using ILP Optimization.
-
-
-## Dependencies:
-
-ImmunoTyper is developed using python 2.7 for compatability with legacy computing clusters.
-
-You can install the following dependencies by running `./install-dependencies.sh`
-
-- [Poa](https://sourceforge.net/projects/poamsa/)
-- [SPOA](https://github.com/rvaser/spoa)
-- [Dense Subgraph Finder from the IG Repertoire Constructor Toolset](http://yana-safonova.github.io/ig_repertoire_constructor/)
-- [Minimap2](https://github.com/lh3/minimap2)
-
-The following python dependencies should be installed using your prefered method (pip, conda etc)
-- [Biopython](https://biopython.org)
-- [Gurobi](http://www.gurobi.com) via the gurobipy package
-- [Blasr](https://github.com/PacificBiosciences/blasr) (easiest to install [via Conda](https://anaconda.org/bioconda/blasr))
-
-You can create a conda environment containing all necessary python devendecies by running 
-`conda env create -f environment.yml`
-You can then activate the environment using 
-`conda activate immunotyper` 
+A Immunoglobulin Heavy Chain Variable Gene genotyping and CNV analysis tool for WGS short reads using ILP Optimization.
 
 
-## Running ImmunoTyper:
+## Installation
 
-ImmunoTyper is run from the `src/immunotyper.py` script via the command `python immunotyper.py`.
+If you already have BWA installed and don't want to create a new environment, just download the latest release binary (see right toolbar) and install with pip:
+
+Then run `pip install <binary.tar.gz>`
+
+However BEST way is to setup an clean environment for the installation first (see below).
+
+### Environment and Dependencies
+
+Installing ImmunoTyper-SR using pip will automatically install the following dependencies:
+
+- [biopython](https://biopython.org/)
+- [dill](https://pypi.org/project/dill/)
+- [gurobipy](https://www.gurobi.com/documentation/9.5/quickstart_mac/cs_grbpy_the_gurobi_python.html)
+- [logbook](https://logbook.readthedocs.io/en/stable/)
+- [pysam](https://pysam.readthedocs.io/en/latest/api.html)
+
+In addition to the above, you will need the BWA mapper. We recommend using a new conda environment for the installation, which you can also use to install BWA:
+
+```conda create -n immunotyper-SR -c bioconda python=3.8 bwa`
+conda activate immunotyper-SR
+pip install <binary.tar.gz>```
+
+
+## Running ImmunoTyper-SR:
+
+After installation with pip, simply use the command `immunotyper-SR`. The only required input is a bam file, and output is a txt file of allele calls save in the current working direction, with the name `<bam_file>-IGHV_functional_allele_calls.txt`. 
+
+IMPORTANT: If your BAM was mapped to GRCh37 use the `--hg37` flag. 
 
 ```
-usage: immunotyper.py [-h] [--dsf DSF] [--poa POA] [--spoa SPOA]
-                      [--minimap MINIMAP] [--blasr BLASR]
-                      [--max_copy MAX_COPY] [--debug_log_path DEBUG_LOG_PATH]
-                      [--no_coverage_estimation] [--skip_extraction]
-                      reads_path expected_coverage output_dir
+$ immunotyper-SR --help
+usage: immunotyper-SR [-h] [--output_dir OUTPUT_DIR] [--hg37] [--bwa BWA] [--max_copy MAX_COPY] [--landmarks_per_group LANDMARKS_PER_GROUP] [--landmark_groups LANDMARK_GROUPS]
+                      [--stdev_coeff STDEV_COEFF] [--seq_error_rate SEQ_ERROR_RATE] [--solver_time_limit SOLVER_TIME_LIMIT] [--debug_log_path DEBUG_LOG_PATH]
+                      [--write_cache_path WRITE_CACHE_PATH] [--no_coverage_estimation]
+                      bam_path
 
-ImmunoTyper: IGHV Genotyping using PacBio Long Reads
+ImmunoTyper-SR: Ig Genotyping using Short Read WGS
 
 positional arguments:
-  reads_path            Input FASTA file of PacBio reads
-  expected_coverage     Sequencing depth
-  output_dir            Path to output directory. The directory must exist. A
-                        fasta is created for each allele call containing the
-                        subreads assigned to that call
+  bam_path              Input BAM file
 
 optional arguments:
   -h, --help            show this help message and exit
-  --dsf DSF             Path to Dense Subgraph Finder tool (usually located in
-                        ig_repertoire_constructor/dense_subgraph_finder.py)
-  --poa POA             Path to POA tool (usually located at poaV2/poa).
-                        Default location is ../tools/poaV2/poa.
-  --spoa SPOA           Path to SPOA tool (usually located at
-                        spoa/build/bin/spoa). Default location is
-                        ../tools/spoa/build/bin/spoa
-  --minimap MINIMAP     Path to minimap tool
-  --blasr BLASR         Path to blasr tool
+  --output_dir OUTPUT_DIR
+                        Path to output directory. Outputs txt file of allele calls with prefix matching input BAM file name.
+  --hg37                Flag if BAM mapped to GRCh37 not GRCh38
+  --bwa BWA             path to bwa executible if not in $PATH
   --max_copy MAX_COPY   Maximum number of allele copies to call
+  --landmarks_per_group LANDMARKS_PER_GROUP
+                        Number of landmarks per group to use (default = 6)
+  --landmark_groups LANDMARK_GROUPS
+                        Number of landmark groups to use (default = 6)
+  --stdev_coeff STDEV_COEFF
+                        Standard deviation scaling coefficient (default = 1.5)
+  --seq_error_rate SEQ_ERROR_RATE
+                        Expected sequence error rate (default = 0.02)
+  --solver_time_limit SOLVER_TIME_LIMIT
+                        Time limit for ILP solver in hours
   --debug_log_path DEBUG_LOG_PATH
                         Path to write log
+  --write_cache_path WRITE_CACHE_PATH
+                        Specific location and name of allele db sam mapping cache
   --no_coverage_estimation
                         Disables empirical coverage
-  --skip_extraction     Disables extractinbg subreads from input FASTA reads.
-                        Used when subreads have already been isolated (i.e. in
-                        simulated data)
-
 ```
