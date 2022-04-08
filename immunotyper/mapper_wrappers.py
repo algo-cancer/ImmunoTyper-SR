@@ -139,13 +139,3 @@ class MrsFast(MappingWrapper):
     src = 'mrsfast'
     def build_command(self, src, params, query_path, target_path, output_path):
         return ' '.join([src, '--search', target_path, '--seq', query_path, '-o', output_path, params])
-    
-class BwaWrapperBiowulf(BwaWrapper):
-    def build_command(self, src, params, query_path, target_path, output_path):
-        module_laod = 'module load bwa && '
-        return module_laod + super().build_command(src, params, query_path, target_path, output_path)
-
-class BowtieWrapperBiowulf(BowtieWrapper):
-    def build_command(self, src, params, query_path, target_path, output_path):
-        module_laod = 'module load bowtie/2 && '
-        return module_laod + super().build_command(src, params, query_path, target_path, output_path)
