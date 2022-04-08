@@ -1,6 +1,6 @@
 # ImmunoTyper-SR
 
-A Immunoglobulin Heavy Chain Variable Gene genotyping and CNV analysis tool for WGS short reads using ILP Optimization.
+A Immunoglobulin Heavy Chain Variable Gene genotyping and CNV analysis tool for WGS short reads using ILP Optimization. See our [BioRxiv paper here](https://www.biorxiv.org/content/10.1101/2022.01.31.478564v1).
 
 
 ## Installation
