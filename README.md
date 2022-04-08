@@ -21,12 +21,17 @@ Installing ImmunoTyper-SR using pip will automatically install the following dep
 - [logbook](https://logbook.readthedocs.io/en/stable/)
 - [pysam](https://pysam.readthedocs.io/en/latest/api.html)
 
-In addition to the above, you will need the BWA mapper. We recommend using a new conda environment for the installation, which you can also use to install BWA:
+In addition to the above, you will need 
 
-```conda create -n immunotyper-SR -c bioconda python=3.8 bwa`
+1.  [BWA mem](http://bio-bwa.sourceforge.net/bwa.shtml) mapper. We recommend using a new conda environment for the installation, which you can also use to install BWA:
+
+```conda create -n immunotyper-SR -c bioconda python=3.8 bwa
 conda activate immunotyper-SR
 pip install <binary.tar.gz>```
 
+2.  [Gurobi](https://www.gurobi.com/) solver configured with a valid license. Licenses are [free for academic purposes](https://www.gurobi.com/downloads/end-user-license-agreement-academic/).
+
+To check that gurobi is correctly configured, run `gurobi_cl` from a shell.
 
 ## Running ImmunoTyper-SR:
 
