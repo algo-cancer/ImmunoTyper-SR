@@ -25,7 +25,8 @@ In addition to the above, you will need
 
 1.  [BWA mem](http://bio-bwa.sourceforge.net/bwa.shtml) mapper. We recommend using a new conda environment for the installation, which you can also use to install BWA:
 
-```conda create -n immunotyper-SR -c bioconda python=3.8 bwa
+```
+conda create -n immunotyper-SR -c bioconda python=3.8 bwa
 conda activate immunotyper-SR
 pip install <binary.tar.gz>
 ```
