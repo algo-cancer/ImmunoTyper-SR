@@ -79,9 +79,18 @@ parser.add_argument(
 
 parser.add_argument(
     '--write_cache_path',
+    type=str,
     default=None,
     help='Specific location and name of allele db sam mapping cache'
 )
+
+parser.add_argument(
+    '--threads',
+    type=int,
+    default=6,
+    help='Max number of threads to use'
+)
+
 
 parser.add_argument('--no_coverage_estimation', help='Disables empirical coverage',
     action='store_true')
@@ -89,7 +98,7 @@ parser.add_argument('--no_coverage_estimation', help='Disables empirical coverag
 
 def main():
     args = parser.parse_args()
-    run_immunotyper(args.bam_path, args.hg37, args.output_dir, args.landmark_groups, args.landmarks_per_group, args.max_copy, args.stdev_coeff, args.seq_error_rate, args.write_cache_path, args.solver_time_limit)
+    run_immunotyper(args.bam_path, args.hg37, args.output_dir, args.landmark_groups, args.landmarks_per_group, args.max_copy, args.stdev_coeff, args.seq_error_rate, args.write_cache_path, args.solver_time_limit, args.threads)
 
 def run_immunotyper(bam_path: str,  hg37: bool=False, 
                                     output_dir: str='',
@@ -99,7 +108,8 @@ def run_immunotyper(bam_path: str,  hg37: bool=False,
                                     stdev_coeff: float=1.5, 
                                     seq_error_rate: float=0.02,
                                     write_cache_path: str='',
-                                    solver_time_limit: int=1):
+                                    solver_time_limit: int=1,
+                                    threads: int=6):
     allele_db = ImgtNovelAlleleDatabase(**{'db_fasta_path': resource_path('IMGT_IGHV_reference_allele_db-updated+oscar_novel-aligned.fasta'),
                                                                 'consensus_path': resource_path('V-QUEST-reference-allele-db+no-period-references+consensus.clustalw.consensus-seq.fasta'),
                                                                 'ignored_alleles_path': resource_path('ignored_alleles.txt')})
@@ -149,7 +159,7 @@ def run_immunotyper(bam_path: str,  hg37: bool=False,
                         maxcopy=max_copy,
                             sequencing_error_rate=seq_error_rate)
     model.build(filtered_reads, candidates)
-    model.solve(timeLimit=solver_time_limit*3600, threads=12, log_path=None)
+    model.solve(timeLimit=solver_time_limit*3600, threads=threads, log_path=None)
 
 
     # Write outputs
