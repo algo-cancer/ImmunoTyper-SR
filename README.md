@@ -7,7 +7,7 @@ A Immunoglobulin Heavy Chain Variable Gene genotyping and CNV analysis tool for 
 
 If you already have BWA installed and don't want to create a new environment, just download the latest release binary (see right toolbar) and install with pip:
 
-Then run `pip install <binary.tar.gz>`
+Then run `pip install <binary.whl>`
 
 However BEST way is to setup an clean environment for the installation first (see below).
 
@@ -28,7 +28,7 @@ In addition to the above, you will need
 ```
 conda create -n immunotyper-SR -c bioconda python=3.8 bwa samtools
 conda activate immunotyper-SR
-pip install <binary.tar.gz>
+pip install <binary.whl>
 ```
 
 2.  [Gurobi](https://www.gurobi.com/) solver configured with a valid license. Licenses are [free for academic purposes](https://www.gurobi.com/downloads/end-user-license-agreement-academic/).
