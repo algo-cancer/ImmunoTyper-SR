@@ -25,7 +25,8 @@ In addition to the above, you will need
 
 1.  [BWA mem](http://bio-bwa.sourceforge.net/bwa.shtml) mapper. We recommend using a new conda environment for the installation, which you can also use to install BWA:
 
-```conda create -n immunotyper-SR -c bioconda python=3.8 bwa
+```
+conda create -n immunotyper-SR -c bioconda python=3.8 bwa samtools
 conda activate immunotyper-SR
 pip install <binary.tar.gz>
 ```
@@ -33,6 +34,22 @@ pip install <binary.tar.gz>
 2.  [Gurobi](https://www.gurobi.com/) solver configured with a valid license. Licenses are [free for academic purposes](https://www.gurobi.com/downloads/end-user-license-agreement-academic/).
 
 To check that gurobi is correctly configured, run `gurobi_cl` from a shell.
+
+### Installing from source
+
+If the binary fails to install for whatever reason, you can build the tool from source as follows:
+
+```
+conda create -n immunotyper-SR -c bioconda python=3.8 bwa samtools
+conda activate immunotyper-SR
+git clone git@github.com:algo-cancer/ImmunoTyper-SR.git ./ImmunoTyper-SR
+cd ImmunoTyper-SR
+python -m pip install --upgrade  build
+python -m build
+pip install dist/<.tar.gz or .whl build>
+```
+
+
 
 ## Running ImmunoTyper-SR:
 
