@@ -1,14 +1,15 @@
 import argparse, os
 from posixpath import splitext
-from immunotyper.allele_database import ImgtNovelAlleleDatabase
-from immunotyper.common import log, initialize_logger
-from immunotyper.bam_filter_classes import IghHg38BamFilter, IghHg37BamFilter
+from .allele_database import ImgtNovelAlleleDatabase
+from .common import log, initialize_logger
+from .bam_filter_classes import IghHg38BamFilter, IghHg37BamFilter
 from Bio import SeqIO
 from statistics import mean
-from immunotyper.read_filter_classes import BwaFlankingFilter
-from immunotyper.candidate_builder_classes import BwaMappingsCandidateBuilder
-from immunotyper.lpinterface import ShortReadModelTotalErrorDiscardObj
-from immunotyper.common import resource_path
+from .read_filter_classes import BwaFlankingFilter
+from .candidate_builder_classes import BwaMappingsCandidateBuilder
+from .lpinterface import ShortReadModelTotalErrorDiscardObj
+from .common import resource_path
+
 
 parser = argparse.ArgumentParser(description='ImmunoTyper-SR: Ig Genotyping using Short Read WGS')
 
