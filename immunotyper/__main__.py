@@ -10,6 +10,7 @@ from .candidate_builder_classes import BwaMappingsCandidateBuilder
 from .lpinterface import ShortReadModelTotalErrorDiscardObj
 from .common import resource_path
 
+initialize_logger()
 
 parser = argparse.ArgumentParser(description='ImmunoTyper-SR: Ig Genotyping using Short Read WGS')
 
