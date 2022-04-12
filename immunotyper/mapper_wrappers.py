@@ -1,6 +1,6 @@
 from os.path import exists
 import os, abc, pysam
-from .common import log, fasta_from_seq
+from src.common import log, fasta_from_seq
 
 class MappingWrapper():
     """ Abstract classe for mapping tool wrappers.
@@ -27,7 +27,7 @@ class MappingWrapper():
     @staticmethod
     def create_temp_file(write_data=None):
         import tempfile
-        result = tempfile.NamedTemporaryFile(delete=True, mode="w")
+        result = tempfile.NamedTemporaryFile(delete=False, mode="w")
         if write_data:
             result.seek(0)
             result.write(write_data)
@@ -139,3 +139,13 @@ class MrsFast(MappingWrapper):
     src = 'mrsfast'
     def build_command(self, src, params, query_path, target_path, output_path):
         return ' '.join([src, '--search', target_path, '--seq', query_path, '-o', output_path, params])
+    
+class BwaWrapperBiowulf(BwaWrapper):
+    def build_command(self, src, params, query_path, target_path, output_path):
+        module_laod = 'module load bwa && '
+        return module_laod + super().build_command(src, params, query_path, target_path, output_path)
+
+class BowtieWrapperBiowulf(BowtieWrapper):
+    def build_command(self, src, params, query_path, target_path, output_path):
+        module_laod = 'module load bowtie/2 && '
+        return module_laod + super().build_command(src, params, query_path, target_path, output_path)

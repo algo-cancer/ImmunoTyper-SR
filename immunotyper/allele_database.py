@@ -55,15 +55,14 @@ class AlleleDatabase(ABC, Iterator):
             else:
                 raise ValueError('\nAllele consensus sequence does not exist at {}'.format(ignored_alleles_path))
         else:
-            self.ignored = None
+            self.ignored = set()
 
         self.db_fasta_path = db_fasta_path
         alleles_dict = {}
         self.genes = {}
         for record in SeqIO.parse(db_fasta_path, 'fasta'):
             allele = self.make_allele_instance(record.description, record.seq, self.consensus, self.gap_delimiter)
-            if self.ignored:
-                allele.is_ignored = True if allele.id in self.ignored else False
+            allele.is_ignored = True if allele.id in self.ignored else False
             alleles_dict[allele.id] = allele
             if allele.gene in self.genes:
                 self.genes[allele.gene].add(allele)
@@ -125,7 +124,28 @@ class AlleleDatabase(ABC, Iterator):
 
     def make_allele_distances(self):  
         with open(self.allele_distances_path, 'rb') as f:
-            self.allele_distances = pickle.load(f)
+            allele_distances = pickle.load(f)
+        if all([x in self.keys() for x in allele_distances]):   # allele_distances dict contains valid allele ids as keys
+            self.allele_distances = allele_distances
+        
+        else: #parsing keys is needed
+            new_allele_distances = OrderedDict()
+
+            def parser(key_str):
+                result = [x for x in self.keys() if x in key_str]
+                if len(result) > 1:
+                    raise ValueError(f"Allele distances pickle entry {key_str} matches more than 1 allele id: {str(result)}")
+                if len(result) == 0:
+                    raise ValueError(f"Allele diostances pickle entry {key_str} does not match any allele id")
+                return result[0]
+            
+            for key, value in allele_distances.items():
+                new_allele_distances[parser(key)] = OrderedDict([(parser(k), v) for k, v in value.items()])
+
+            self.allele_distances = new_allele_distances
+
+
+
     
     def build_similar_alleles(self, is_similar=None, variant_filter=None):
         '''Iterates through all pairs of alleles, assigning allele.similar_alleles ([]) using AlleleReference.allele_is_similar'''
