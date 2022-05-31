@@ -4,6 +4,7 @@
 import os, sys
 import pkg_resources
 import logbook, logbook.more
+import tempfile
 from Bio.Seq import Seq
 
 DATA_DIR = 'immunotyper.data'
@@ -196,3 +197,50 @@ class PrintRedirect:
     def __exit__(self, exc_type, exc_val, exc_tb):
         sys.stdout.close()
         sys.stdout = self._original_stdout
+
+
+def create_temp_file(write_data=None, suffix='', delete=True, mode="w"):
+    '''Use fasta_from_seq(*zip(*[(x.id, x.seq) for x in SeqRecords]) to write seqrecord sequences
+    Use tempfile.name to get path'''
+    result = tempfile.NamedTemporaryFile(suffix=suffix, delete=delete, mode=mode)
+    if write_data:
+        result.write(write_data)
+        result.truncate()
+        result.flush()
+    return result
+
+from contextlib import contextmanager
+
+@contextmanager
+def suppress_stdout():
+    with open(os.devnull, "w") as devnull:
+        old_stdout = sys.stdout
+        sys.stdout = devnull
+        try:
+            yield
+        finally:
+            sys.stdout = old_stdout
+
+# import subprocess
+# import shlex
+# def run_command(command_string: str, check: bool=True, log_stout: bool=False, log_stderr: bool=False, dont_split: bool=False, *args, **kwargs):
+#         '''Wrapper for subprocess.run
+#         Args
+#             command_string
+#             check                       run check arg value
+#             log_stout, log_sterr        writes stout, sterr to log.ino if True respectively
+#             *args, **kwargs             Additional args for run
+#         Raises subprocess.CalledProcessError, writes stdout, sterr to log.error if check=True and non-zero
+#             exit status returned '''
+#         try:
+#             command_string = shlex.split(command_string) if not dont_split else command_string
+#             result = subprocess.run(command_string, check=check, capture_output=True, *args, **kwargs)
+#         except subprocess.CalledProcessError as e:
+#             log.error(f"Command {command_string} returned non-zero exit status:\n{e.stdout.decode('UTF-8')}\n{e.stderr.decode('UTF-8')}")
+#             raise e
+        
+#         if log_stout: log.info(result.stdout)
+#         if log_stderr: log.info(result.stderr)
+
+def run_command(command_string: str, *args, **kwargs):
+    os.system(command_string)

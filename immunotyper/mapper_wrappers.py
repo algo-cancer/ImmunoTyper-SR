@@ -27,7 +27,7 @@ class MappingWrapper():
     @staticmethod
     def create_temp_file(write_data=None):
         import tempfile
-        result = tempfile.NamedTemporaryFile(delete=False, mode="w")
+        result = tempfile.NamedTemporaryFile(delete=True, mode="w")
         if write_data:
             result.seek(0)
             result.write(write_data)
@@ -70,10 +70,10 @@ class MappingWrapper():
         if isinstance(query, str):
             if not exists(query):
                 log.error('Provided query path is invalid, please provide a path as a string or Bio.SeqIO-like objects')
-            query_path = query
+            query_path = '"'+query+'"'
         else:
             query_file = self.create_temp_file(write_data=fasta_from_seq(*zip(*[(x.id, x.seq) for x in query])))
-            query_path = query_file.name
+            query_path = '"'+query_file.name+'"'
 
         ## Check type(target), make temp file and write target seqs as needed
         if not isinstance(target, str):
@@ -83,7 +83,7 @@ class MappingWrapper():
             log.error('Provided target file does not exist: %s ' % target)
             raise ValueError('Provided target file does not exist: %s ' % target)
 
-        target_path = target
+        target_path = '"'+target+'"'
 
         if not src:
             src = self.src
@@ -129,11 +129,17 @@ class BwaWrapper(MappingWrapper):
     src = 'bwa'
     def build_command(self, src, params, query_path, target_path, output_path):
         return ' '.join([src, 'mem', params, target_path, query_path, '>', output_path])
+    def index_reference(self, reference_path):
+        os.system(f"bwa index {reference_path}")
 
 class BowtieWrapper(MappingWrapper):
     src = 'bowtie2'
     def build_command(self, src, params, query_path, target_path, output_path):
+        if os.path.splitext(query_path)[1].replace('"', '') in set(['.fa', '.FA', '.fasta']): # input is fasta file
+            params = params+' -f'
         return ' '.join([src, params, '-x', target_path, '-U', query_path, '-S', output_path])
+    def index_reference(self, reference_path):
+        os.system(f"bowtie2-build {reference_path} {reference_path}")
 
 class MrsFast(MappingWrapper):
     src = 'mrsfast'
