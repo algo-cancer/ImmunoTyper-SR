@@ -26,11 +26,12 @@ class AlleleDatabase(ABC, Iterator):
     num_landmarks = None
     allele_distances_path = None
 
-    def __init__(self, db_fasta_path, consensus_path='', ignored_alleles_path='', allele_distances_path=None):
+    def __init__(self, db_fasta_path, consensus_path='', ignored_alleles_path='', allele_distances_path=None, gene_clusters_path=''):
         '''Args
                 db_fasta_path (str)             Path to fasta of all alleles. Must be MSA alignment.
                 gap_delimiter (str/char)        Char used to indicate gaps in db_fasta_path
                 consensus_path (str)            Path to fasta of consensus gainst which to call variants
+                gene_clusters_path (str)        Path to TSV of gene's to consider 'same' based on external sequence identity analysis
         '''
 
         # load consensus
@@ -46,6 +47,16 @@ class AlleleDatabase(ABC, Iterator):
         else:
             self.consensus = None
 
+        # load gene clusters
+        if gene_clusters_path:
+            if os.path.exists(gene_clusters_path):
+                self.load_gene_clusters(gene_clusters_path)
+            else:
+                raise ValueError('\nAllele consensus sequence does not exist at {}'.format(consensus_path))
+        else:
+            self.gene_clusters = None
+
+
         # load ignored alleles
         if ignored_alleles_path:
             if os.path.exists(ignored_alleles_path):
@@ -55,15 +66,14 @@ class AlleleDatabase(ABC, Iterator):
             else:
                 raise ValueError('\nAllele consensus sequence does not exist at {}'.format(ignored_alleles_path))
         else:
-            self.ignored = None
+            self.ignored = set()
 
         self.db_fasta_path = db_fasta_path
         alleles_dict = {}
         self.genes = {}
         for record in SeqIO.parse(db_fasta_path, 'fasta'):
             allele = self.make_allele_instance(record.description, record.seq, self.consensus, self.gap_delimiter)
-            if self.ignored:
-                allele.is_ignored = True if allele.id in self.ignored else False
+            allele.is_ignored = True if allele.id in self.ignored else False
             alleles_dict[allele.id] = allele
             if allele.gene in self.genes:
                 self.genes[allele.gene].add(allele)
@@ -125,7 +135,42 @@ class AlleleDatabase(ABC, Iterator):
 
     def make_allele_distances(self):  
         with open(self.allele_distances_path, 'rb') as f:
-            self.allele_distances = pickle.load(f)
+            allele_distances = pickle.load(f)
+        if all([x in self.keys() for x in allele_distances]):   # allele_distances dict contains valid allele ids as keys
+            self.allele_distances = allele_distances
+        
+        else: #parsing keys is needed
+            new_allele_distances = OrderedDict()
+
+            def parser(key_str):
+                result = [x for x in self.keys() if x in key_str]
+                if len(result) > 1:
+                    raise ValueError(f"Allele distances pickle entry {key_str} matches more than 1 allele id: {str(result)}")
+                if len(result) == 0:
+                    raise ValueError(f"Allele diostances pickle entry {key_str} does not match any allele id")
+                return result[0]
+            
+            for key, value in allele_distances.items():
+                new_allele_distances[parser(key)] = OrderedDict([(parser(k), v) for k, v in value.items()])
+
+            self.allele_distances = new_allele_distances
+
+
+    def load_gene_clusters(self, path):
+        '''Loads TSV of gene clusters (one cluster per line, gene ids tab delimited) and sets attr 
+        Sets
+            self.gene_clusters                  list of frozenset objects
+            self.gene_in_cluster                Dictionary with gene id as key, relevant frozenset cluster as value'''
+        clusters = []
+        gene_in_cluster = {}
+        with open(path, 'r') as f:
+            for line in f.readlines():
+                cluster = [x.strip() for x in line.split('\t')]
+                for gene in cluster:
+                    gene_in_cluster[gene] = cluster
+                clusters.append(cluster)
+        self.gene_clusters = clusters
+        self.gene_in_cluster = gene_in_cluster
     
     def build_similar_alleles(self, is_similar=None, variant_filter=None):
         '''Iterates through all pairs of alleles, assigning allele.similar_alleles ([]) using AlleleReference.allele_is_similar'''
@@ -266,6 +311,19 @@ class AlleleDatabase(ABC, Iterator):
                 for allele in cluster:
                     self.alleles_dict[allele.strip()].cluster = cluster
                 self.clusters.append(cluster)
+
+    def get_wildtype_target(self, gene: str):
+        ''' In many cases this returns the *01 allele, except with genes that are present in self.gene_in_cluster
+        in which case it returns the first allele of the first gene of the alphabetical sort of the cluster '''
+        if gene not in self.gene_in_cluster:
+            if gene+'*01' in self:
+                wildtype_target=gene+'*01'
+            else:
+                wildtype_target = sorted(self.genes[gene].alleles, key=lambda x: x.id)[0].id
+        else:
+            cluster = self.gene_in_cluster[gene]
+            wildtype_target = sorted(self.genes[cluster[0]].alleles, key=lambda x: x.id)[0].id # should give *01 in most cases
+        return wildtype_target
 
 
     def print_alignment(self, a, b, bp_per_line=130):

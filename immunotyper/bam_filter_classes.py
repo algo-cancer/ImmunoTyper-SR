@@ -111,7 +111,7 @@ class BamFilter(ABC):
     def recruit_reads(self, regions=None, unmapped=True):
         ''' Extracts reads mapping to self.regions_to_extract or regions
         '''
-        if os.path.isfile(self.output_path):
+        if os.path.isfile(self.output_path) or os.path.islink(self.output_path):
             log.warn(f'output_path {self.output_path} already exists... Not recruiting reads')
             self.print_read_count()
             return
@@ -265,3 +265,23 @@ class IghHg37BamFilter(Hg37BamFilter):
                 ('chr21', 10861761, 10873428),          # chr21 orphon
                 ('chr2', 95612746, 95620195),           # chr2 orphon
                 ]
+
+
+class IglHg38BamFilter(Hg38BamFilter):
+
+    @property
+    def regions_to_extract(self):
+        return [('22', 22026077, 22922971),
+                ('CHR_HSCHR22_1_CTG3', 22376007, 22628513),
+                ('8', 47202438, 47202738),
+                ('8', 85036663, 85036820),
+                ('12', 114874490, 114874653),
+                ('13', 110839095, 110839189)
+                ]
+
+class IglHg37BamFilter(Hg37BamFilter):
+
+    @property
+    def regions_to_extract(self):
+        return [('22', 22380475, 23265143),
+                ('8', 48114061, 48114361)]
