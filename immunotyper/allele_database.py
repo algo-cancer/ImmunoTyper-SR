@@ -52,7 +52,7 @@ class AlleleDatabase(ABC, Iterator):
             if os.path.exists(gene_clusters_path):
                 self.load_gene_clusters(gene_clusters_path)
             else:
-                raise ValueError('\nAllele consensus sequence does not exist at {}'.format(consensus_path))
+                raise ValueError('\nGene clusters file does not exist at {}'.format(consensus_path))
         else:
             self.gene_clusters = None
 
@@ -64,7 +64,7 @@ class AlleleDatabase(ABC, Iterator):
                 with open(ignored_alleles_path, 'r') as f:
                     self.ignored = set([x.strip() for x in f.readlines()])
             else:
-                raise ValueError('\nAllele consensus sequence does not exist at {}'.format(ignored_alleles_path))
+                raise ValueError('\nIgnored alleles file does not exist at {}'.format(ignored_alleles_path))
         else:
             self.ignored = set()
 
