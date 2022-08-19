@@ -18,6 +18,25 @@ def resource_path(key, data_dir_path=DATA_DIR):
     """
     return pkg_resources.resource_filename(data_dir_path, key)
 
+db_resource_path = lambda x: resource_path(x, 'immunotyper.data.allele_databases')
+databases = {'ighv': {'db_fasta_path': db_resource_path('IMGT_IGHV_reference_allele_db-updated+oscar_novel-aligned.fasta'),
+                                                                'consensus_path': db_resource_path('V-QUEST-reference-allele-db+no-period-references+consensus.clustalw.consensus-seq.fasta'),
+                                                                'ignored_alleles_path': resource_path('ignored_alleles.txt')},
+                'iglv': {'db_fasta_path': db_resource_path('IGLV-IMGT-allele-db-aligned.fasta'),
+                                                                'consensus_path': db_resource_path('IGLV-IMGT-allele-db-consensus.fasta')},
+                'trav': {'db_fasta_path': db_resource_path('IMGT_TRAV_reference_allele_db-aligned.fasta'),
+                                                            'consensus_path': db_resource_path('IMGT_TRAV_reference_allele_db-consensus.fasta')},
+                'igkv':  {'db_fasta_path': db_resource_path('IMGT_IGKV_reference_allele_db-aligned.fasta'),
+                                                            'consensus_path': db_resource_path('IMGT_IGKV_reference_allele_db-consensus.fasta')}}
+
+
+
+allele_db_mapping_path = {'ighv': db_resource_path('IMGT_IGHV_reference_allele_db-updated+oscar_novel-no_duplicates.fa'),
+                        'iglv': db_resource_path('IGLV-IMGT-allele-db-no_duplicates.fa'),
+                        'trav': db_resource_path('IMGT_TRAV_reference_allele_db.fasta'),
+                        'igkv': db_resource_path('IGKV-IMGT-allele-db-no_duplicates.fa')}
+
+
 def header(string):
     return '\n\n' + '-'*len(string) + string + '-'*len(string) + '\n\n'
 

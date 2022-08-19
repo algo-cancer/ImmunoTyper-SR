@@ -26,14 +26,14 @@ class AlleleDatabase(ABC, Iterator):
     num_landmarks = None
     allele_distances_path = None
 
-    def __init__(self, db_fasta_path, consensus_path='', ignored_alleles_path='', allele_distances_path=None, gene_clusters_path=''):
+    def __init__(self, db_fasta_path, consensus_path='', ignored_alleles_path='', allele_distances_path=None, gene_clusters_path='', gene_type='IGHV'):
         '''Args
                 db_fasta_path (str)             Path to fasta of all alleles. Must be MSA alignment.
                 gap_delimiter (str/char)        Char used to indicate gaps in db_fasta_path
                 consensus_path (str)            Path to fasta of consensus gainst which to call variants
                 gene_clusters_path (str)        Path to TSV of gene's to consider 'same' based on external sequence identity analysis
         '''
-
+        self.gene_type = gene_type.upper()
         # load consensus
         if consensus_path:
             if os.path.exists(consensus_path):
@@ -52,7 +52,10 @@ class AlleleDatabase(ABC, Iterator):
             if os.path.exists(gene_clusters_path):
                 self.load_gene_clusters(gene_clusters_path)
             else:
-                raise ValueError('\nGene clusters file does not exist at {}'.format(consensus_path))
+                log.warn('\nGene clusters file does not exist at {}'.format(gene_clusters_path))
+        elif gene_clusters_path == None:
+            self.gene_clusters = []
+            self.gene_in_cluster = {}
         else:
             self.gene_clusters = None
 
@@ -459,8 +462,11 @@ Functional: {self.functional}'''
     
     def get_snps(self, other_allele):
         return [(pos, var_type) for pos, var_type in 
-                self.get_variants(self.aligned_seq.replace(self.gap_delimiter, '.'), other_allele.aligned_seq.replace(other_allele.gap_delimiter, '.'))
+                self.get_variants(other_allele.aligned_seq.replace(other_allele.gap_delimiter, '.'), self.aligned_seq.replace(self.gap_delimiter, '.'))
                 if 'SNP' in var_type]
+
+    def get_all_variants(self, other_allele):
+        return self.get_variants(other_allele.aligned_seq.replace(other_allele.gap_delimiter, '.'), self.aligned_seq.replace(self.gap_delimiter, '.'))
 
     def num_snps(self, other_allele):
         return len(self.get_snps(other_allele))
@@ -655,8 +661,10 @@ class ImgtAlleleReference(AlleleReference):
             
             self.accession = data[0]
             self.id = data[1]
-            self.functional = data[3]
-            self.accession_start, self.accession_end = [int(x) for x in data[5].split('..')]
+            self.functional_raw = data[3]
+            self.functional = self.functional_raw[1] if self.functional_raw[0] in {'[', '('} else self.functional_raw
+            accession_interval = data[5]
+            self.accession_start, self.accession_end = [int(x) for x in data[5].split('..')] if '..' in accession_interval else (None, None)
             self.accession_len = int(data[6].split(' ')[0].split('_')[0])
             try:
                 self.coding_start = int(data[7])
@@ -674,7 +682,7 @@ class ImgtAlleleReference(AlleleReference):
 
             self.is_reversed = True if 'rev-compl' in data[14] else False
         except (ValueError, IndexError) as e:
-            raise ValueError(f'Allele data not valid {self.info}').with_traceback(e.__traceback__)
+            raise ValueError(f'Allele data not valid {data}').with_traceback(e.__traceback__)
     
 class NovelAlleleReference(AlleleReference):
     ''' Child class implementation of AlleleReference for novel alleles
