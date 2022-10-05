@@ -751,6 +751,14 @@ class GeneReference(object):
         return len(self.alleles)
 
     #
+    # Attributes
+    # 
+
+    @property
+    def is_functional(self):
+        return any([a.is_functional for a in self.alleles])
+
+    #
     # Instance methods
     #
     def add(self, allele):
