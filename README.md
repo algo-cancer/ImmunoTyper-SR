@@ -1,6 +1,8 @@
 # ImmunoTyper-SR
 
-A Immunoglobulin Heavy Chain Variable Gene genotyping and CNV analysis tool for WGS short reads using ILP Optimization. See our [BioRxiv paper here](https://www.biorxiv.org/content/10.1101/2022.01.31.478564v1).
+An Immunoglobulin Variable Gene genotyping and CNV analysis tool for WGS short reads using ILP Optimization. See our [paper here](https://www.cell.com/cell-systems/fulltext/S2405-4712(22)00352-0?_returnURL=https%3A%2F%2Flinkinghub.elsevier.com%2Fretrieve%2Fpii%2FS2405471222003520%3Fshowall%3Dtrue).
+
+Note we now support calling IGLV, IGKV and TRAV (see "Running ImmunoTyper-SR" below).
 
 
 ## Installation
@@ -53,15 +55,18 @@ pip install dist/<.tar.gz or .whl build>
 
 ## Running ImmunoTyper-SR:
 
-After installation with pip, simply use the command `immunotyper-SR`. The only required input is a bam file, and output is a txt file of allele calls save in the current working direction, with the name `<bam_file>-IGHV_functional_allele_calls.txt`. 
+After installation with pip, simply use the command `immunotyper-SR`. The only required input is a bam file, and the outputs are the following files, made to the current working directory, where `<prefix>` is the input BAM filename without the extension:
+-  `<prefix>-<gene_type>_functional_allele_calls.txt`: list of functional alleles called, one per line. Multiple copies are indicated by multiple lines of the same allele.
+-  `<prefix>-<gene_type>_allele_calls.txt`: as above but including pseudogenes.
+-  `<prefix>-<gene_type>-extracted.fa`: reads extracted from the BAM used for analysis
+-  `<prefix>-<gene_type>-immunotyper-debug.log`: log file
 
 IMPORTANT: If your BAM was mapped to GRCh37 use the `--hg37` flag. 
 
 ```
 $ immunotyper-SR --help
-usage: immunotyper-SR [-h] [--output_dir OUTPUT_DIR] [--hg37] [--bwa BWA] [--max_copy MAX_COPY] [--landmarks_per_group LANDMARKS_PER_GROUP] [--landmark_groups LANDMARK_GROUPS]
-                      [--stdev_coeff STDEV_COEFF] [--seq_error_rate SEQ_ERROR_RATE] [--solver_time_limit SOLVER_TIME_LIMIT] [--debug_log_path DEBUG_LOG_PATH]
-                      [--write_cache_path WRITE_CACHE_PATH] [--no_coverage_estimation]
+usage: immunotyper-SR [-h] [--gene_type {ighv,iglv,trav,igkv}] [--output_dir OUTPUT_DIR] [--ref REF] [--hg37] [--bwa BWA] [--max_copy MAX_COPY] [--landmarks_per_group LANDMARKS_PER_GROUP] [--landmark_groups LANDMARK_GROUPS] [--stdev_coeff STDEV_COEFF] [--seq_error_rate SEQ_ERROR_RATE] [--solver_time_limit SOLVER_TIME_LIMIT] [--debug_log_path DEBUG_LOG_PATH]
+                      [--write_cache_path WRITE_CACHE_PATH] [--threads THREADS] [--no_coverage_estimation]
                       bam_path
 
 ImmunoTyper-SR: Ig Genotyping using Short Read WGS
@@ -71,8 +76,11 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  --gene_type {ighv,iglv,trav,igkv}
+                        Specify which genes to target
   --output_dir OUTPUT_DIR
                         Path to output directory. Outputs txt file of allele calls with prefix matching input BAM file name.
+  --ref REF             Path to the reference FASTA to decode CRAM files. Option is not used if bam_path is not a CRAM.
   --hg37                Flag if BAM mapped to GRCh37 not GRCh38
   --bwa BWA             path to bwa executible if not in $PATH
   --max_copy MAX_COPY   Maximum number of allele copies to call
@@ -90,6 +98,7 @@ optional arguments:
                         Path to write log
   --write_cache_path WRITE_CACHE_PATH
                         Specific location and name of allele db sam mapping cache
+  --threads THREADS     Max number of threads to use
   --no_coverage_estimation
                         Disables empirical coverage
 ```
