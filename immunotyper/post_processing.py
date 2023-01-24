@@ -95,9 +95,9 @@ class PostProcessor(object):
         run_command(command, check=True)
 
         try:
-            self.vcf_variants[mapping_target][frozenset(alleles)] = dict([(x.pos, x.alts) for x in pysam.VariantFile(str(bcf_path))])
+            self.vcf_variants[mapping_target][frozenset(alleles)] = dict([(x.pos, (x.ref, x.alts)) for x in pysam.VariantFile(str(bcf_path))])
         except KeyError:
-            self.vcf_variants[mapping_target] = {frozenset(alleles): dict([(x.pos, x.alts) for x in pysam.VariantFile(str(bcf_path))])}
+            self.vcf_variants[mapping_target] = {frozenset(alleles): dict([(x.pos, (x.ref, x.alts)) for x in pysam.VariantFile(str(bcf_path))])}
         except ValueError as e:
             log.error(f"Error running {command}:")
             raise e
@@ -215,9 +215,9 @@ class PostProcessor(object):
                 if already_processed:
                     raise ValueError(f"Mapping target {mapping_target} has >= 1 allele present in some other variant call")
                 already_processed = already_processed.union(alleles)
-                for pos, alts in var.items():
+                for pos, (ref, alts) in var.items():
                     for a in alts:
-                        variant_labels.append(":".join([gene, str(pos), a]))
+                        variant_labels.append(".".join([gene, str(pos), ref+a]))
         return variant_labels
     
     def write_all_variants(self, output_path):

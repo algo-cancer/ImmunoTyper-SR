@@ -1,7 +1,8 @@
+from atexit import register
 import subprocess as sp
 import os, itertools, pysam
 from abc import ABC, abstractmethod
-from .common import Read, log, SeqRecord, fasta_from_seq, resource_path
+from .common import Read, log, SeqRecord, fasta_from_seq, resource_path, allele_db_mapping_path
 from statistics import mean, pvariance
 from .read_filter_classes import TtnMappingFilter
 
@@ -28,6 +29,8 @@ class BamFilter(ABC):
             self.primary_mapping_only = primary_mapping_only
         if not output_path:
             self.output_path = os.path.splitext(bam_file_path)[0]+'-extracted.fa'
+        elif os.path.isdir(output_path):
+            self.output_path = os.path.join(output_path, os.path.splitext(os.path.basename(bam_file_path))[0]+'-extracted.fa')
         else:
             self.output_path = output_path
 
@@ -35,23 +38,26 @@ class BamFilter(ABC):
         try:
             if not file_type:   
                 ext = os.path.splitext(bam_file_path)[1].lower()
-                file_type = self.pysam_type_argument_mapping[ext]
+                self.file_type = self.pysam_type_argument_mapping[ext]
             else:
                 if not file_type in list(self.pysam_type_argument_mapping.values()):
-                    file_type = self.pysam_type_argument_mapping[file_type]
+                    self.file_type = self.pysam_type_argument_mapping[file_type]
+                else:
+                    self.file_type = file_type
         except KeyError:
             log.error(f'Unsupported alignment file type, please provide mapping file with one of the following extensions: {", ".join(self.pysam_type_argument_mapping.keys())}')
             raise
         
         # load alignment with pysam
         try:
-            if file_type == 'rc':
+            if self.file_type == 'rc':
                 if not reference_fasta_path:
                     log.error(f"CRAM alignment file provided, please provide path to reference fasta")
                     raise ValueError(f"CRAM alignment file provided, please provide path to reference fasta")
-                self.bam = pysam.AlignmentFile(bam_file_path, file_type, reference_filename=reference_fasta_path)
+                self.reference_fasta_path = reference_fasta_path
+                self.bam = pysam.AlignmentFile(bam_file_path, self.file_type, reference_filename=self.reference_fasta_path)
             else:
-                self.bam = pysam.AlignmentFile(bam_file_path, file_type)
+                self.bam = pysam.AlignmentFile(bam_file_path, self.file_type)
             self.bam_file_path = bam_file_path
         except ValueError as e:
             log.error(f"Problem loading alignment file: {str(e)}")
@@ -88,7 +94,11 @@ class BamFilter(ABC):
         command = f"samtools view -h {self.bam_file_path} {regions_str} | samtools fasta - | sed 's,/,-,' > {self.output_path}"
         log.info(f'Extracting mapped alignments using \n {command}')
         with open(self.output_path, 'w') as f_out:
-            p1 = sp.Popen(['samtools', 'view', '-h', f'{self.bam_file_path}', *(regions_str.split())], stdout=sp.PIPE)
+            if self.file_type == 'rc':
+                _env = {'REF_PATH': self.reference_fasta_path}
+                p1 = sp.Popen(['samtools', 'view', '-h', f'{self.bam_file_path}', *(regions_str.split())], env=dict(os.environ, **_env), stdout=sp.PIPE)
+            else:
+                p1 = sp.Popen(['samtools', 'view', '-h', f'{self.bam_file_path}', *(regions_str.split())], stdout=sp.PIPE)
             p2 = sp.Popen(['samtools', 'fasta', '-'], stdin=p1.stdout, stdout=sp.PIPE)
             p1.stdout.close()  # Allow p1 to receive a SIGPIPE if p2 exits.
             p3 = sp.Popen(['sed', '-E', r"s;/;-;"], stdin=p2.stdout, stdout=f_out)
@@ -101,7 +111,11 @@ class BamFilter(ABC):
             command = f"samtools fasta -f 0x4 {self.bam_file_path} | sed -E " + r's,/(.),-\1-un,' + f" >> {self.output_path}"
             log.info(f"Extracting unmapped alignments using \n {command}")
             with open(self.output_path, 'a') as f_out:
-                p1 = sp.Popen(['samtools', 'fasta', '-f', r'0x4', f'{self.bam_file_path}'], stdout=sp.PIPE)
+                if self.file_type == 'rc':
+                    _env = {'REF_PATH': self.reference_fasta_path}
+                    p1 = sp.Popen(['samtools', 'view', '-h', f'{self.bam_file_path}', *(regions_str.split())], env=dict(os.environ, **_env), stdout=sp.PIPE)
+                else:
+                    p1 = sp.Popen(['samtools', 'fasta', '-f', r'0x4', f'{self.bam_file_path}'], stdout=sp.PIPE)
                 p2 = sp.Popen(['sed', '-E', r"s;/(.);-\1-un;"], stdin=p1.stdout, stdout=f_out)
                 p1.stdout.close()  # Allow p1 to receive a SIGPIPE if p2 exits.
                 p2.communicate()
@@ -219,6 +233,34 @@ class BamFilter(ABC):
         raise NotImplementedError
 
 
+regions_resource_path = lambda x: resource_path(x, 'immunotyper.data.extract_regions')
+class BamFilterImplemented(BamFilter):
+    '''Simple wrapper for BamFilter that just requires the gene type and reference genome specified at instantiation. Uses immunotyper package resources (immunotyper.data)'''
+
+    def __init__(self, bam_file_path, gene_type, hg38=True, reference_fasta_path=None, file_type=None, primary_mapping_only=False, output_path=None):
+        self.alternative_chromosome_ids_path = resource_path('hg38_chromosome_alt_ids.tsv') if hg38 else resource_path('hg37_chromosome_alt_ids.tsv')
+        self.hg38 = hg38 
+
+        if gene_type.lower() not in allele_db_mapping_path:
+            log.warn(f"Gene type {gene_type} does not yet have allele database implemented in immunotyper")
+        self.regions_path = regions_resource_path(f"{gene_type.upper()}-{'hg38' if hg38 else 'hg37'}_extract_regions.bed")
+
+        super().__init__(bam_file_path, reference_fasta_path, file_type, primary_mapping_only, output_path)
+    
+    @property
+    def regions_to_extract(self):
+        '''Depends on self.regions_path'''
+        result = []
+        with open(self.regions_path, 'r') as f:
+            for line in f.readlines():
+                chrm, start, end, _ = [x.strip() for x in line.split('\t')]
+                result.append((chrm, int(start), int(end)))
+        return result
+
+    @property
+    def sample_region(self):
+        return ('chr2', 178561310, 178574416) if self.hg38 else ('chr2', 179426037, 179439143)
+
 class Hg38BamFilter(BamFilter):
     alternative_chromosome_ids_path = resource_path('hg38_chromosome_alt_ids.tsv')
     sample_region = ('chr2', 178561310, 178574416) # titin exon 326
@@ -237,6 +279,7 @@ class Hg37BamFilter(BamFilter):
         if alternative_chromosome_ids_path:
             self.alternative_chromosome_ids_path = alternative_chromosome_ids_path
         super().__init__(bam_file_path, reference_fasta_path=reference_fasta_path, file_type=file_type, primary_mapping_only=primary_mapping_only, output_path=output_path)
+
 
 class IghHg38BamFilter(Hg38BamFilter):
 
@@ -267,21 +310,18 @@ class IghHg37BamFilter(Hg37BamFilter):
                 ]
 
 
-class IglHg38BamFilter(Hg38BamFilter):
 
-    @property
-    def regions_to_extract(self):
-        return [('22', 22026077, 22922971),
-                ('CHR_HSCHR22_1_CTG3', 22376007, 22628513),
-                ('8', 47202438, 47202738),
-                ('8', 85036663, 85036820),
-                ('12', 114874490, 114874653),
-                ('13', 110839095, 110839189)
-                ]
+#--------------------------------------#
+# Below is for backwards compatibility #
+#--------------------------------------#
 
-class IglHg37BamFilter(Hg37BamFilter):
 
-    @property
-    def regions_to_extract(self):
-        return [('22', 22380475, 23265143),
-                ('8', 48114061, 48114361)]
+class IglHg38BamFilter(BamFilterImplemented):
+
+    def __init__(self, bam_file_path, reference_fasta_path=None, file_type=None, primary_mapping_only=False, output_path=None):
+        super().__init__(bam_file_path, 'iglv', True, reference_fasta_path, file_type, primary_mapping_only, output_path)
+
+class IglHg37BamFilter(BamFilterImplemented):
+
+    def __init__(self, bam_file_path, reference_fasta_path=None, file_type=None, primary_mapping_only=False, output_path=None, alternative_chromosome_ids_path=None):
+        super().__init__(bam_file_path, 'iglv', False, reference_fasta_path, file_type, primary_mapping_only, output_path, alternative_chromosome_ids_path)
