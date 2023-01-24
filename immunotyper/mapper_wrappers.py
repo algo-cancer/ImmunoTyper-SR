@@ -1,6 +1,6 @@
 from os.path import exists
 import os, abc, pysam
-from src.common import log, fasta_from_seq
+from .common import log, fasta_from_seq
 
 class MappingWrapper():
     """ Abstract classe for mapping tool wrappers.
