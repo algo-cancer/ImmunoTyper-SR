@@ -153,6 +153,17 @@ class Read():
             allele_id = allele.id
         return self.mappings_dict[allele_id].reference_start
     
+    def get_unclipped_start(self, allele):
+        '''Gets reference_start from mapping to provided allele'''
+        #TODO test
+        start = self.get_start(allele)
+        end = self.get_end(allele)
+        length_diff = len(self.seq) - (end-start)
+        if length_diff == 0:
+            return start
+        else:
+            return start-length_diff
+
     def get_end(self, allele):
         '''Gets reference_end from mapping to provided allele'''
         if isinstance(allele, str):
@@ -160,6 +171,17 @@ class Read():
         else:
             allele_id = allele.id
         return self.mappings_dict[allele_id].reference_end
+    
+    def get_unclipped_end(self, allele):
+        '''Gets reference_start from mapping to provided allele'''
+        #TODO test
+        start = self.get_start(allele)
+        end = self.get_end(allele)
+        length_diff = len(self.seq) - (end-start)
+        if length_diff == 0:
+            return end
+        else:
+            return end+length_diff
     
     def covers_position(self, pos, allele):
         '''Returns true if mapping to allele covers pos'''
@@ -218,11 +240,12 @@ class PrintRedirect:
         sys.stdout = self._original_stdout
 
 
-def create_temp_file(write_data=None, suffix='', delete=True, mode="w"):
+def create_temp_file(write_data=None, suffix='', delete=True, mode="w", **kwargs):
     '''Use fasta_from_seq(*zip(*[(x.id, x.seq) for x in SeqRecords]) to write seqrecord sequences
     Use tempfile.name to get path'''
-    result = tempfile.NamedTemporaryFile(suffix=suffix, delete=delete, mode=mode)
+    result = tempfile.NamedTemporaryFile(suffix=suffix, delete=delete, mode=mode, **kwargs)
     if write_data:
+        result.seek(0)
         result.write(write_data)
         result.truncate()
         result.flush()

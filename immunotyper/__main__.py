@@ -7,8 +7,14 @@ from Bio import SeqIO
 from statistics import mean
 from .read_filter_classes import BwaFlankingFilter
 from .candidate_builder_classes import BwaMappingsCandidateBuilder
-from .lpinterface import ShortReadModelTotalErrorDiscardObj
+from .solvers import GurobiSolver
+from .models import ShortReadModelTotalErrorDiscardObj
 from .common import resource_path
+
+
+implemented_solvers = {'gurobi': GurobiSolver}
+
+implemented_models = {'ilp': ShortReadModelTotalErrorDiscardObj}
 
 
 parser = argparse.ArgumentParser(description='ImmunoTyper-SR: Ig Genotyping using Short Read WGS')
@@ -27,6 +33,18 @@ parser.add_argument(
 parser.add_argument('--hg37',
     help='Flag if BAM mapped to GRCh37 not GRCh38',
     action='store_true')
+
+parser.add_argument('--solver',
+    help='Choose ilp solver',
+    choices=['gurobi'], 
+    default='gurobi'
+)
+
+# parser.add_argument('--model',
+#     help='Choose model type',
+#     choices=['ilp'], 
+#     default='ilp'
+# )
 
 parser.add_argument(
     '--bwa',
@@ -103,14 +121,14 @@ parser.add_argument('--no_coverage_estimation', help='Disables empirical coverag
 
 
 def main():
-    args = parser.parse_args()
-    run_immunotyper(args.bam_path, args.ref, args.gene_type, args.hg37, args.output_dir, args.landmark_groups, args.landmarks_per_group, args.max_copy, args.stdev_coeff, args.seq_error_rate, args.write_cache_path, args.solver_time_limit, args.threads)
-    
+    args = parser.parse_args()    
+    run_immunotyper(args.bam_path, args.ref, args.gene_type, args.hg37, args.solver, args.output_dir, args.landmark_groups, args.landmarks_per_group, args.max_copy, args.stdev_coeff, args.seq_error_rate, args.write_cache_path, args.solver_time_limit, args.threads)
 
 
 def run_immunotyper(bam_path: str,  ref: str='',
                                     gene_type: str='ighv',
                                     hg37: bool=False, 
+                                    solver: str='gurobi',
                                     output_dir: str='',
                                     landmark_groups: int=6, 
                                     landmarks_per_group: int=6, 
@@ -120,6 +138,23 @@ def run_immunotyper(bam_path: str,  ref: str='',
                                     write_cache_path: str='',
                                     solver_time_limit: int=1,
                                     threads: int=6):
+    """Driver method to run immunotyper and output calls
+
+    Args:
+        bam_path (str): Path to Input BAM file
+        gene_type (str, optional): Defaults to 'ighv'.
+        hg37 (bool, optional): Flag if BAM mapped to GRCh37. Defaults to False.
+        model_type (str, optional): Model to use. Defaults to 'ilp-gurobi'.
+        output_dir (str, optional): _description_. Defaults to ''.
+        landmark_groups (int, optional): _description_. Defaults to 6.
+        landmarks_per_group (int, optional): _description_. Defaults to 6.
+        max_copy (int, optional): _description_. Defaults to 4.
+        stdev_coeff (float, optional): _description_. Defaults to 1.5.
+        seq_error_rate (float, optional): _description_. Defaults to 0.02.
+        write_cache_path (str, optional): _description_. Defaults to ''.
+        solver_time_limit (int, optional): _description_. Defaults to 1.
+        threads (int, optional): _description_. Defaults to 6.
+    """
     allele_db = ImgtNovelAlleleDatabase(**databases[gene_type])
 
     output_prefix = os.path.splitext(os.path.basename(bam_path))[0]
@@ -154,19 +189,21 @@ def run_immunotyper(bam_path: str,  ref: str='',
 
 
     # Make allele candidates
+    ### Instantiate model to get candidate class to use
     candidate_builder = BwaMappingsCandidateBuilder(read_length=READ_LENGTH,
                                                                 allele_db=allele_db)
     candidates = candidate_builder.make_candidates(filtered_reads)
 
 
     # Build and run model
-    model = ShortReadModelTotalErrorDiscardObj(num_landmarks=landmark_groups*landmarks_per_group,
+    model = implemented_models['ilp'](implemented_solvers[solver], num_landmarks=landmark_groups*landmarks_per_group,
                                             num_landmark_groups=landmark_groups,
                         stdev_coefficient=stdev_coeff, 
                         maxcopy=max_copy,
                             sequencing_error_rate=seq_error_rate)
+
     model.build(filtered_reads, candidates)
-    model.solve(timeLimit=solver_time_limit*3600, threads=threads, log_path=None)
+    model.solve(time_limit=solver_time_limit*3600, threads=threads, log_path=None)
 
 
     # Write outputs
@@ -174,16 +211,13 @@ def run_immunotyper(bam_path: str,  ref: str='',
     output_file = os.path.join(output_dir, os.path.splitext(os.path.basename(bam_path))[0]+f'-{gene_type.upper()}_functional_allele_calls.txt')
     log.info(f"Writing allele calls to: {output_file}")
     with open(output_file, 'w') as f:
-        for c in model.candidates:
-            if allele_db[c.id].is_functional:
-                for copy in range(int(c.copy_multipler.getValue())):
-                    f.write(c.id+'\n')
+        for c in model.get_allele_calls(functional_only=True):
+            f.write(c+'\n')
     output_file = os.path.join(output_dir, os.path.splitext(os.path.basename(bam_path))[0]+f'-{gene_type.upper()}_allele_calls.txt')
     log.info(f"Writing allele calls to: {output_file}")
     with open(output_file, 'w') as f:
-        for c in model.candidates:
-            for copy in range(int(c.copy_multipler.getValue())):
-                f.write(c.id+'\n')
+        for c in model.get_allele_calls(functional_only=False):
+            f.write(c+'\n')
 
 
 if __name__ == '__main__':
