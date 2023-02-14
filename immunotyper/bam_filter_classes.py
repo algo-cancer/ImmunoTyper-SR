@@ -125,10 +125,14 @@ class BamFilter(ABC):
     def recruit_reads(self, regions=None, unmapped=True):
         ''' Extracts reads mapping to self.regions_to_extract or regions
         '''
-        if os.path.isfile(self.output_path) or os.path.islink(self.output_path):
-            log.warn(f'output_path {self.output_path} already exists... Not recruiting reads')
-            self.print_read_count()
-            return
+        try:
+            if os.path.isfile(self.output_path) or os.path.islink(self.output_path):
+                log.warn(f'output_path {self.output_path} already exists... Not recruiting reads')
+                self.print_read_count()
+                return
+        except sp.CalledProcessError: # file could not be read by `wc -l`
+            log.error(f"Could not load reads from {self.output_path}, recruiting reads from BAM...")
+
         if not regions:
             regions = self.regions_to_extract
         
