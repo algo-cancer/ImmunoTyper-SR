@@ -150,7 +150,6 @@ class GurobiSolver(IlpSolverMeta):
         else:
             type = self.gurobipy.GRB.CONTINUOUS
         v = self.model.addVar(*args, vtype=type, lb=lb, ub=ub, name=name, **kwargs)
-        self.model.update()
         return v
 
     def quicksum(self, expr):
