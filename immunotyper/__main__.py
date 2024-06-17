@@ -5,7 +5,7 @@ from .common import log, initialize_logger, databases, allele_db_mapping_path
 from .bam_filter_classes import BamFilterImplemented, IghHg38BamFilter
 from Bio import SeqIO
 from statistics import mean
-from .read_filter_classes import BwaFlankingFilter
+from .read_filter_classes import BowtieFlankingFilter
 from .candidate_builder_classes import BwaMappingsCandidateBuilder
 from .solvers import GurobiSolver
 from .models import ShortReadModelTotalErrorDiscardObj
@@ -163,7 +163,7 @@ def run_immunotyper(bam_path: str,  ref: str='',
     # Extract reads from BAM
     bam_filter = BamFilterImplemented(bam_path, gene_type, not hg37, reference_fasta_path=ref, output_path=output_dir)
     bam_filter.recruit_reads()
-    m, variance, edge_variance = bam_filter.sample_coverage()
+    m, variance, edge_variance = bam_filter.sample_coverage(large_depth_sample=True)
     READ_DEPTH = int(round(m/2))
     VARIANCE = variance/2
     EDGE_VARIANCE = [x/2 for x in edge_variance]
@@ -182,17 +182,18 @@ def run_immunotyper(bam_path: str,  ref: str='',
     allele_db.make_landmarks(landmark_groups*landmarks_per_group, READ_LENGTH, READ_DEPTH, VARIANCE, EDGE_VARIANCE, 50, landmark_groups)
 
     # Make read mappings to allele database and filter
-    flanking_filter = BwaFlankingFilter(reference_path=allele_db_mapping_path[gene_type],
-                                        write_cache_path = write_cache_path if write_cache_path else None,
-                                        load_cache_path = write_cache_path if write_cache_path else None)
-    filtered_reads, negative = flanking_filter.filter_reads(bam_filter.output_path)
-
-
+    flanking_filter = BowtieFlankingFilter(reference_path=allele_db_mapping_path[gene_type],
+                                    write_cache_path = write_cache_path if write_cache_path else None,
+                                    load_cache_path = write_cache_path if write_cache_path else None)
+                                   
+    positive, negative = flanking_filter.filter_reads(bam_filter.output_path, mapping_params="-a --end-to-end --very-sensitive -f  --n-ceil C,100,0 --np 0 --ignore-quals --mp 2,2 --score-min C,-50,0 -L 10")
+    for r in positive: r.allele_db = allele_db
+    
     # Make allele candidates
     ### Instantiate model to get candidate class to use
     candidate_builder = BwaMappingsCandidateBuilder(read_length=READ_LENGTH,
                                                                 allele_db=allele_db)
-    candidates = candidate_builder.make_candidates(filtered_reads)
+    candidates = candidate_builder.make_candidates(positive)
 
 
     # Build and run model
@@ -202,7 +203,7 @@ def run_immunotyper(bam_path: str,  ref: str='',
                         maxcopy=max_copy,
                             sequencing_error_rate=seq_error_rate)
 
-    model.build(filtered_reads, candidates)
+    model.build(positive, candidates)
     model.solve(time_limit=solver_time_limit*3600, threads=threads, log_path=None)
 
 

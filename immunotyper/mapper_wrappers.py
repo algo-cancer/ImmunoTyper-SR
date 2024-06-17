@@ -131,7 +131,10 @@ class BowtieWrapper(MappingWrapper):
     def build_command(self, src, params, query_path, target_path, output_path):
         if os.path.splitext(query_path)[1].replace('"', '') in set(['.fa', '.FA', '.fasta']): # input is fasta file
             params = params+' -f'
-        return ' '.join([src, params, '-x', target_path, '-U', query_path, '-S', output_path])
+        if not self.output_sorted_bam:
+            return ' '.join([src, params, '-x', target_path, '-U', query_path, '-S', output_path])
+        else:
+            return ' '.join([src, params, '-x', target_path, '-U', query_path, '|', 'samtools', 'view', '-b', '|', 'samtools', 'sort', '-', '>', output_path])
     def index_reference(self, reference_path):
         os.system(f"bowtie2-build {reference_path} {reference_path}")
 

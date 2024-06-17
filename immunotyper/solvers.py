@@ -215,11 +215,11 @@ class GurobiSolver(IlpSolverMeta):
     def get_value(self, var):
         try:
             if var.vtype == self.gurobipy.GRB.BINARY:
-                return round(var.x) > 0
+                return round(var.getAttr("X")) > 0
             elif var.vtype == self.gurobipy.GRB.INTEGER:
-                return int(round(var.x))
+                return int(round(var.getAttr("X")))
             else:
-                return var.x
+                return var.getAttr("X")
         except AttributeError:
             return var.getValue()
 
