@@ -266,7 +266,7 @@ class PostProcessorModel(PostProcessor):
         
         calls = []
         for c in self.candidates.values():
-            calls.extend([c.id]*int(c.copy_multipler.getValue()))
+            calls.extend([c.id]*int(model.get_value(c.copy_multipler)))
         
         return {'read_assignment': read_assignment, 'input_reads': reads, 'calls': calls}
 

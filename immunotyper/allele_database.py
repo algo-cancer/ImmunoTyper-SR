@@ -1,10 +1,10 @@
-import os, math
+import os, math, json
 from Bio import SeqIO
 from Bio.Seq import Seq
 from abc import ABC, abstractmethod
 from .common import log
 from itertools import combinations
-from collections import OrderedDict, Iterator
+from collections import OrderedDict, Iterator, defaultdict
 from math import sqrt
 import dill as pickle
 #
@@ -136,8 +136,10 @@ class AlleleDatabase(ABC, Iterator):
     def __next__(self):     # implementing Iterator ABC
         return list(self.alleles_dict.keys()).pop()
 
-    def make_allele_distances(self):  
-        with open(self.allele_distances_path, 'rb') as f:
+    def make_allele_distances(self, allele_distances_path=None):  
+        if not allele_distances_path:
+            allele_distances_path = self.allele_distances_path
+        with open(allele_distances_path, 'rb') as f:
             allele_distances = pickle.load(f)
         if all([x in self.keys() for x in allele_distances]):   # allele_distances dict contains valid allele ids as keys
             self.allele_distances = allele_distances
@@ -237,8 +239,8 @@ class AlleleDatabase(ABC, Iterator):
         num_landmarks = self.num_landmarks+1
         a_len = len(allele)
         
-        if a_len < self.minimum_coding_bases:   # allele is too short to have valid mappings
-            return None, None
+        # if a_len < self.minimum_coding_bases:   # allele is too short to have valid mappings
+        #     return None, None
         
         step = round(a_len/float(num_landmarks))
         landmarks = [x for x in range(step, a_len, step)][:self.num_landmarks]
@@ -262,7 +264,7 @@ class AlleleDatabase(ABC, Iterator):
 
         relative_pos = min(pos, len(allele)-pos)
 
-        num_start_positions = min(self.read_length, flanking_length+pos) - max(0, pos-allele.last_start)
+        num_start_positions = min(self.read_length, flanking_length+pos+1) - max(0, pos-allele.last_start)
         single_copy_trial_probability = (float(self.sampled_depth))/self.read_length
         
         expected_depth = num_start_positions*single_copy_trial_probability
@@ -281,7 +283,7 @@ class AlleleDatabase(ABC, Iterator):
         allele.last_start = len(allele)-self.minimum_coding_bases
         flanking_length = self.read_length - self.minimum_coding_bases
 
-        num_start_positions = min(self.read_length, flanking_length+pos) - max(0, pos-allele.last_start)
+        num_start_positions = min(self.read_length, flanking_length+pos+1) - max(0, pos-allele.last_start)
         single_copy_trial_probability = (float(self.sampled_depth))/self.read_length
         
         expected_depth = num_start_positions*single_copy_trial_probability
@@ -307,12 +309,17 @@ class AlleleDatabase(ABC, Iterator):
     def add_allele_clusters(self, cluster_path):
         '''Takes a csv of allele clusters (once cluster per line) and adds the list of alleles in the cluster as a attribute .cluster to
         every allele object in the database'''
+        from .allele_clusters import Cluster
         self.clusters = []
+        self.allele_to_cluster = defaultdict(lambda: None)
+        for a in self.alleles: a.cluster = None
         with open(cluster_path, 'r') as f:
-            for line in f.readlines():
-                cluster = line.split(',')
-                for allele in cluster:
-                    self.alleles_dict[allele.strip()].cluster = cluster
+            for i, line in enumerate(f.readlines()):
+                alleles = [self[a.strip()] for a in line.split('\t')]
+                cluster = Cluster(i, alleles)
+                for allele in alleles:
+                    allele.cluster = cluster
+                    self.allele_to_cluster[allele.id] = cluster
                 self.clusters.append(cluster)
 
     def get_wildtype_target(self, gene: str):
@@ -365,17 +372,80 @@ class ImgtNovelAlleleDatabase(AlleleDatabase):
         gap_delimiter        Set as ImgtAlleleReference in __init__
     '''
     gap_delimiter = '-'
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, flanking_json=None, minimum_mapped_prefix_bases=100, **kwargs):
+        if flanking_json:
+            with open(flanking_json, 'r') as f:
+                self.flanking_data = json.load(f)
+        else:
+            self.flanking_data = None
+
         super().__init__(*args, **kwargs)
     
     def make_allele_instance(self, description, seq, consensus, gap_delimiter):
         if 'Homo_sapiens' in description: # allele is IMGT
-            return ImgtAlleleReference(description, seq, consensus, gap_delimiter)
+            return ImgtAlleleReference(description, seq, consensus, gap_delimiter, self.flanking_data)
         elif 'Novel' in description:   # is oscar novel allele
             return OscarNovelAlleleReference(description, seq, consensus, gap_delimiter)
         else:
             raise NotImplementedError(f"Allele type for {description} not implemented")
 
+    def calculate_landmark_expection(self, allele, pos):
+        '''Returns a tuple representing an allele landmark: (position, expected_depth, [0, 1 copy expected stddev, 2 copy stdev,..., self.max_copies expected stdev])'''
+
+        if not allele.has_flanking:
+            return super().calculate_landmark_expection(allele, pos)
+        
+        # check if relevant flanking is long enough to not scale depth
+        start_closest = True if pos < (len(allele)/2) else False
+        if (start_closest and  len(allele.upstream_flanking)+pos >= self.read_length) or (not start_closest and len(allele.downstream_flanking)+(len(allele)-pos) >= self.read_length):
+            return (pos, round(self.sampled_depth), [0]+[sqrt(self.sampled_variance * copy_num) for copy_num in range(1, self.max_copies+1)])
+        
+
+        # landmark pos close enough to beginning/end that it needs to be scaled
+        relative_pos = min(pos, len(allele)-pos)
+        flanking_len = len(allele.upstream_flanking) if start_closest else len(allele.downstream_flanking)
+
+        expected_depth_scaling_factor = min((self.read_length-self.minimum_coding_bases+flanking_len+relative_pos)/self.read_length, 1)
+        
+        expected_depth = expected_depth_scaling_factor * self.sampled_depth
+        single_copy_variance = expected_depth_scaling_factor * self.sampled_variance     # scale single copy variance to get landmark single copy variance
+
+        stdevs = [0] + [sqrt(copy_num * single_copy_variance) for copy_num in range(1, self.max_copies+1)]       # scale landmark single copy variance by copy number
+        
+                
+        return (pos, round(expected_depth), stdevs)
+    
+
+    @staticmethod
+    def get_edit_distance(a1, a2, ignore_start_gaps: bool=False, ignore_end_gaps: bool=False) -> int:
+        """Calculates edit distance using AlleleRferences.aligned_seq
+        Args:
+            ignore_start_gaps:          does not include prefix gaps in edit distance output
+            ignore_end_gaps:            does not include suffix gaps in edit distance output         
+        """
+
+        first_m_flag = False
+        leading_gaps = 0
+        gaps_since_last_m = 0
+        edit_distance = 0
+        for i, j in zip(a1, a2):
+            if i != j:
+                edit_distance += 1
+                if (i == '-' or j == '-'):
+                    if not first_m_flag:
+                        leading_gaps += 1
+                    gaps_since_last_m += 1
+                else:
+                    gaps_since_last_m = 0
+                    first_m_flag = True
+                
+            else:
+                gaps_since_last_m = 0
+                first_m_flag = True
+
+        return edit_distance - (ignore_start_gaps * leading_gaps) - (ignore_end_gaps * gaps_since_last_m)
+
+    
 
 
 #
@@ -397,9 +467,9 @@ class AlleleReference(ABC):
     '''
 
     def __init__(self, allele_data, aligned_seq, consensus_seq=None, gap_delimiter='-', *args, **kwargs):
-        self.set_attr(allele_data, *args, **kwargs)
         self.aligned_seq = str(aligned_seq)
         self.seq = self.aligned_seq.replace(gap_delimiter,'')
+        self.set_attr(allele_data, *args, **kwargs)
         self.gap_delimiter = gap_delimiter
         if consensus_seq:
             self.set_variants(consensus_seq)
@@ -416,6 +486,13 @@ class AlleleReference(ABC):
     @property
     def reverse_complement(self):
         return str(Seq(self.seq).reverse_complement())
+    
+    @property
+    def has_flanking(self):
+        try:
+            return self._has_flanking
+        except AttributeError:
+            return False
     
     #
     # Magic methods
@@ -652,7 +729,7 @@ class ImgtAlleleReference(AlleleReference):
                          'rev-compl' if self.is_reversed else '_']])+'|'
 
 
-    def set_attr(self, data):
+    def set_attr(self, data, flanking_data=None):
         self.original_imgt_description = data
         data = data.split('|')
         try:
@@ -681,6 +758,28 @@ class ImgtAlleleReference(AlleleReference):
             self.is_downstream_partial = True if "3'" in partial else False
 
             self.is_reversed = True if 'rev-compl' in data[14] else False
+
+            # Add flanking sequence data
+            if flanking_data and (self.id in flanking_data) and (flanking_data[self.id]['start'] > 0 or flanking_data[self.id]['end'] > len(flanking_data[self.id]['sequence'])):
+                self._has_flanking = True
+                self.flanking_data = flanking_data[self.id]
+                if self.flanking_data['sequence'][self.flanking_data['start']:self.flanking_data['end']] != self.seq:
+                    raise ValueError(f"Sequence in flanking sequence json for allele {self.id} does not match allele sequence")
+                self.upstream_flanking = self.flanking_data['sequence'][:self.flanking_data['start']]
+                self.downstream_flanking = self.flanking_data['sequence'][self.flanking_data['end']:]
+                self.seq_with_flanking = self.flanking_data['sequence']
+                self.coding_start = self.flanking_data['start']
+                self.coding_end = self.flanking_data['end']
+            else: # flanked by Ns
+                self._has_flanking = True
+                self.upstream_flanking = 'n'*100
+                self.downstream_flanking = 'n'*100
+                self.seq_with_flanking = ('n'*100) + self.seq + ('n'*100)
+                self.coding_start = 100
+                self.coding_end = len(self.seq)-100
+
+
+
         except (ValueError, IndexError) as e:
             raise ValueError(f'Allele data not valid {data}').with_traceback(e.__traceback__)
     
@@ -704,6 +803,14 @@ class NovelAlleleReference(AlleleReference):
             self.variants = None
         self.functional = functional
 
+        self._has_flanking = True
+        self.upstream_flanking = 'n'*100
+        self.downstream_flanking = 'n'*100
+        self.seq_with_flanking = ('n'*100) + self.seq + ('n'*100)
+        self.coding_start = 100
+        self.coding_end = len(self.seq)-100
+
+
 
     def set_attr(self, seq, functional_type):
         pass
@@ -717,7 +824,15 @@ class OscarNovelAlleleReference(AlleleReference):
     def set_attr(self, data):
         self.id = data
         self.gene = self.id.split('*')[0]
-        self.functional = 'F'
+        self.functional = 'F' if "or" not in self.id else "P"
+
+        self._has_flanking = True
+        self.upstream_flanking = 'n'*100
+        self.downstream_flanking = 'n'*100
+        self.seq_with_flanking = ('n'*100) + self.seq + ('n'*100)
+        self.coding_start = 100
+        self.coding_end = len(self.seq)-100
+
 
 
 class GeneReference(object):
