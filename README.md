@@ -1,21 +1,45 @@
-# ImmunoTyper-SR
+# 🎉 ImmunoTyper-SR 🧬
 
-An Immunoglobulin Variable Gene genotyping and CNV analysis tool for WGS short reads using ILP Optimization. See our [paper here](https://www.cell.com/cell-systems/fulltext/S2405-4712(22)00352-0?_returnURL=https%3A%2F%2Flinkinghub.elsevier.com%2Fretrieve%2Fpii%2FS2405471222003520%3Fshowall%3Dtrue).
+**ImmunoTyper-SR** is a powerful tool for Immunoglobulin Variable Gene genotyping and CNV analysis from whole genome sequencing (WGS) short reads using ILP Optimization. Check out our [paper here](https://www.cell.com/cell-systems/fulltext/S2405-4712(22)00352-0?_returnURL=https%3A%2F%2Flinkinghub.elsevier.com%2Fretrieve%2Fpii%2FS2405471222003520%3Fshowall%3Dtrue) for more details.
 
-Note we now support calling IGLV, IGKV and TRAV (see "Running ImmunoTyper-SR" below).
+📢 **New Feature:** Now supporting IGLV and TRAV genotyping! 🎉
 
+## 🚀 Installation
 
-## Installation
+### Gurobi
 
-If you already have BWA installed and don't want to create a new environment, just download the latest release binary (see right toolbar) and install with pip:
+ImmunoTyper-SR leverages the Gurobi solver for optimization. You need a valid license to use Gurobi. Licenses are [free for academic purposes](https://www.gurobi.com/downloads/end-user-license-agreement-academic/).
 
-Then run `pip install <binary.whl>`
+### Docker / Singularity
 
-However BEST way is to setup an clean environment for the installation first (see below).
+For the easiest installation, we recommend using the Docker image available on DockerHub at `cdslsahinalp/immunotyper-sr`.
+
+To run the image with Singularity (commonly used on HPCs), use the following command:
+
+```sh
+singularity pull docker://cdslsahinalp/immunotyper-sr
+singularity run -B <GUROBI_LICENSE_PATH>:/opt/gurobi/gurobi.lic -B <BAM_DIRECTORY>:<BAM_DIRECTORY> -B <OUTPUT_PATH>:/output immunotyper-sr_latest.sif <BAM_DIRECTORY>/<BAM_FILE>
+```
+
+### Conda + Pip
+
+If you already have BWA installed and prefer not to create a new environment, you can download the latest release binary (see right toolbar) and install it with pip:
+
+```
+pip install <binary.whl>
+```
+
+For the best experience, we recommend setting up a clean environment first:
+
+```
+conda create -n immunotyper-SR -c bioconda python=3.8 bwa samtools
+conda activate immunotyper-SR
+pip install <binary.whl>
+```
 
 ### Environment and Dependencies
 
-Installing ImmunoTyper-SR using pip will automatically install the following dependencies:
+Installing ImmunoTyper-SR with pip will automatically install these dependencies:
 
 - [biopython](https://biopython.org/)
 - [dill](https://pypi.org/project/dill/)
@@ -33,13 +57,14 @@ conda activate immunotyper-SR
 pip install <binary.whl>
 ```
 
-2.  [Gurobi](https://www.gurobi.com/) solver configured with a valid license. Licenses are [free for academic purposes](https://www.gurobi.com/downloads/end-user-license-agreement-academic/).
+2.  [Gurobi](https://www.gurobi.com/) solver configured with a valid license
 
 To check that gurobi is correctly configured, run `gurobi_cl` from a shell.
 
 ### Installing from source
 
-If the binary fails to install for whatever reason, you can build the tool from source as follows:
+If the binary fails to install, you can build the tool from source:
+
 
 ```
 conda create -n immunotyper-SR -c bioconda python=3.8 bwa samtools
@@ -53,13 +78,14 @@ pip install dist/<.tar.gz or .whl build>
 
 
 
-## Running ImmunoTyper-SR:
+## 🛠️ Running ImmunoTyper-SR:
 
-After installation with pip, simply use the command `immunotyper-SR`. The only required input is a bam file, and the outputs are the following files, made to the current working directory, where `<prefix>` is the input BAM filename without the extension:
--  `<prefix>-<gene_type>_functional_allele_calls.txt`: list of functional alleles called, one per line. Multiple copies are indicated by multiple lines of the same allele.
--  `<prefix>-<gene_type>_allele_calls.txt`: as above but including pseudogenes.
--  `<prefix>-<gene_type>-extracted.fa`: reads extracted from the BAM used for analysis
--  `<prefix>-<gene_type>-immunotyper-debug.log`: log file
+After installing with pip, use the command immunotyper-SR. The only required input is a BAM file. Outputs are generated in the current working directory, where <prefix> is the input BAM filename without the extension:
+
+- <prefix>-<gene_type>_functional_allele_calls.txt: List of functional alleles called.
+- <prefix>-<gene_type>_allele_calls.txt: Includes pseudogenes.
+- <prefix>-<gene_type>-extracted.fa: Reads extracted from the BAM used for analysis.
+- <prefix>-<gene_type>-immunotyper-debug.log: Log file.
 
 IMPORTANT: If your BAM was mapped to GRCh37 use the `--hg37` flag. 
 
