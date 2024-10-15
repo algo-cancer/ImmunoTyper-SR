@@ -20,7 +20,7 @@ implemented_models = {'ilp': ShortReadModelTotalErrorDiscardObj}
 parser = argparse.ArgumentParser(description='ImmunoTyper-SR: Ig Genotyping using Short Read WGS')
 
 parser.add_argument('bam_path', type=str, help='Input BAM file')
-parser.add_argument('--gene_type', choices=['ighv', 'iglv', 'trav', 'igkv', 'trbv'], default='ighv', help='Specify which genes to target')
+parser.add_argument('--gene_type', choices=['ighv', 'iglv', 'trav', 'igkv', 'trbv', 'trdv'], default='ighv', help='Specify which genes to target')
 parser.add_argument('--output_dir', default='', type=str, help='Path to output directory. Outputs txt file of allele calls with prefix matching input BAM file name.')
 
 
