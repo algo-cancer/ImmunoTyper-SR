@@ -32,7 +32,7 @@ class BamFilter(ABC):
         if not output_path:
             self.output_path = os.path.splitext(bam_file_path)[0]+f'-{self.gene_type}-extracted.fa'
         elif os.path.isdir(output_path):
-            self.output_path = os.path.join(output_path, os.path.splitext(os.path.basename(bam_file_path))[0]+'-extracted.fa')
+            self.output_path = os.path.join(output_path, os.path.splitext(os.path.basename(bam_file_path))[0]+f'-{self.gene_type}-extracted.fa')
         else:
             self.output_path = output_path
         self.reference_fasta_path = reference_fasta_path

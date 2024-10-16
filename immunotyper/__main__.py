@@ -158,7 +158,7 @@ def run_immunotyper(bam_path: str,  ref: str='',
     allele_db = ImgtNovelAlleleDatabase(**databases[gene_type])
 
     output_prefix = os.path.splitext(os.path.basename(bam_path))[0]
-    initialize_logger(os.path.join(output_dir, f'{output_prefix}-immunotyper-debug'))
+    initialize_logger(os.path.join(output_dir, f'{output_prefix}-{gene_type}-immunotyper-debug'))
 
     # Extract reads from BAM
     bam_filter = BamFilterImplemented(bam_path, gene_type, not hg37, reference_fasta_path=ref, output_path=output_dir)
@@ -204,7 +204,7 @@ def run_immunotyper(bam_path: str,  ref: str='',
                             sequencing_error_rate=seq_error_rate)
 
     model.build(positive, candidates)
-    model.solve(time_limit=solver_time_limit*3600, threads=threads, log_path=None)
+    model.solve(time_limit=solver_time_limit*3600, threads=threads, log_path=os.path.join(output_dir, f'{output_prefix}-{gene_type}-gurobi.log'))
 
 
     # Write outputs
