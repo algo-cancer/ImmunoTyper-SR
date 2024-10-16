@@ -30,6 +30,8 @@ databases = {'ighv': {'db_fasta_path': db_resource_path('IMGT_IGHV_reference_all
                                                             'consensus_path': db_resource_path('TRBV-IMGT-allele-db-consensus.fasta')},
                 'trdv': {'db_fasta_path': db_resource_path('TRDV-IMGT-allele-db-aligned.fasta'),
                                                             'consensus_path': db_resource_path('TRDV-IMGT-allele-db-consensus.fasta')},
+                'trgv': {'db_fasta_path': db_resource_path('TRGV-IMGT-allele-db-aligned.fasta'),
+                                                            'consensus_path': db_resource_path('TRGV-IMGT-allele-db-consensus.fasta')},
                 'igkv':  {'db_fasta_path': db_resource_path('IMGT_IGKV_reference_allele_db-aligned.fasta'),
                                                             'consensus_path': db_resource_path('IMGT_IGKV_reference_allele_db-consensus.fasta')}}
 
@@ -40,6 +42,7 @@ allele_db_mapping_path = {'ighv': db_resource_path('IMGT_IGHV_reference_allele_d
                         'trav': db_resource_path('IMGT_TRAV_reference_allele_db+Ns.fasta'),
                         'trbv': db_resource_path('TRBV-IMGT-allele-db-no_duplicates+Ns.fa'),
                         'trdv': db_resource_path('TRDV-IMGT-allele-db+Ns.fa'),
+                        'trgv': db_resource_path('TRGV-IMGT-allele-db+Ns.fa'),
                         'igkv': db_resource_path('IGKV-IMGT-allele-db-no_duplicates.fa')}
 
 
