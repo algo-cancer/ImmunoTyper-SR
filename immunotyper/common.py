@@ -19,8 +19,8 @@ def resource_path(key, data_dir_path=DATA_DIR):
     return pkg_resources.resource_filename(data_dir_path, key)
 
 db_resource_path = lambda x: resource_path(x, 'immunotyper.data.allele_databases')
-databases = {'ighv': {'db_fasta_path': db_resource_path('IMGT_IGHV_reference_allele_db-updated+oscar_novel-aligned+orphon+Ns-aligned.fasta'),
-                                                                'consensus_path': db_resource_path('IMGT_IGHV_reference_allele_db-updated+oscar_novel-aligned+orphon+Ns-consensus.fasta'),
+databases = {'ighv': {'db_fasta_path': db_resource_path('IGHV-IMGT-allele-db-aligned.fasta'),
+                                                                'consensus_path': db_resource_path('IGHV-IMGT-allele-db-consensus.fasta'),
                                                                 'ignored_alleles_path': resource_path('ignored_alleles.txt')},
                 'iglv': {'db_fasta_path': db_resource_path('IGLV-IMGT-allele-db-aligned.fasta'),
                                                                 'consensus_path': db_resource_path('IGLV-IMGT-allele-db-consensus.fasta')},
@@ -37,7 +37,7 @@ databases = {'ighv': {'db_fasta_path': db_resource_path('IMGT_IGHV_reference_all
 
 
 
-allele_db_mapping_path = {'ighv': db_resource_path('IMGT_IGHV_reference_allele_db-updated+oscar_novel+orphon+Ns.fa'),
+allele_db_mapping_path = {'ighv': db_resource_path('IGHV-IMGT-allele-db-no_duplicates+Ns.fa'),
                         'iglv': db_resource_path('IGLV-IMGT-allele-db-no_duplicates+Ns.fasta'),
                         'trav': db_resource_path('IMGT_TRAV_reference_allele_db+Ns.fasta'),
                         'trbv': db_resource_path('TRBV-IMGT-allele-db-no_duplicates+Ns.fa'),
