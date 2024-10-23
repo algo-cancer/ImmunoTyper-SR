@@ -146,7 +146,8 @@ class PostProcessor(object):
         has_variants = bool(records)
 
         if output_vcf_dir and has_variants:
-            output_vcf_path = os.path.join(output_vcf_dir, f"{gene}_variants.vcf")
+            safe_gene = gene.replace('/', '_')
+            output_vcf_path = os.path.join(output_vcf_dir, f"{safe_gene}_variants.vcf")
             shutil.copy(phased_vcf_path, output_vcf_path)
 
         # Load variants into memory
@@ -383,6 +384,7 @@ class PostProcessorOutput(PostProcessor):
             if a not in self.allele_db:
                 raise ValueError(f"Allele call {a} from {calls_path} not in database")
         return calls
+
 
 
 

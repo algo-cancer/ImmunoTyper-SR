@@ -2,7 +2,7 @@ from atexit import register
 import subprocess as sp
 import os, itertools, pysam
 from abc import ABC, abstractmethod
-from .common import Read, log, SeqRecord, fasta_from_seq, resource_path, allele_db_mapping_path
+from .common import Read, log, SeqRecord, fasta_from_seq, resource_path, get_allele_db_mapping_path
 from statistics import mean, pvariance
 from .read_filter_classes import TtnMappingFilter
 import subprocess
@@ -317,8 +317,7 @@ class BamFilterImplemented(BamFilter):
         self.alternative_chromosome_ids_path = resource_path('hg38_chromosome_alt_ids.tsv') if hg38 else resource_path('hg37_chromosome_alt_ids.tsv')
         self.hg38 = hg38 
         self.gene_type = gene_type.lower()
-        if gene_type.lower() not in allele_db_mapping_path:
-            log.warn(f"Gene type {gene_type} does not yet have allele database implemented in immunotyper")
+        _ = get_allele_db_mapping_path(gene_type.lower()) # Check if allele db implemented - raises exception if not
         self.regions_path = regions_resource_path(f"{gene_type.upper()}-{'hg38' if hg38 else 'hg37'}_extract_regions.bed")
         log.debug(f"Using regions file: {self.regions_path}")
         

@@ -1,0 +1,65 @@
+Found duplicate sequence:
+  Existing: M20813|IGKV1/OR2-1*01|Homo_sapiens|P|V-REGION|320..606|287 nt|1| | | | |287+0=287| | |
+  Current:  AC128677|IGKV1/OR2-2*01|Homo_sapiens|P|V-REGION|125243..125529|287 nt|1| | | | |287+0=287| | |
+  Keeping: M20813|IGKV1/OR2-1*01|Homo_sapiens|P|V-REGION|320..606|287 nt|1| | | | |287+0=287| | | (first occurrence or equal/higher priority)
+Found duplicate sequence:
+  Existing: X51885|IGKV1/OR2-11*01|Homo_sapiens|P|V-REGION|359..645|287 nt|1| | | | |287+0=287| | |
+  Current:  X51879|IGKV1/OR2-9*01|Homo_sapiens|P|V-REGION|484..770|287 nt|1| | | | |287+0=287| | |
+  Keeping: X51885|IGKV1/OR2-11*01|Homo_sapiens|P|V-REGION|359..645|287 nt|1| | | | |287+0=287| | | (first occurrence or equal/higher priority)
+Found duplicate sequence:
+  Existing: V01576|IGKV1-12*02|Homo_sapiens|F|V-REGION|1361..1647|287 nt|1| | | | |287+0=287| | |
+  Current:  V01576|IGKV1D-12*02|Homo_sapiens|F|V-REGION|1361..1647|287 nt|1| | | | |287+0=287| | |
+  Keeping: V01576|IGKV1-12*02|Homo_sapiens|F|V-REGION|1361..1647|287 nt|1| | | | |287+0=287| | | (first occurrence or equal/higher priority)
+Found duplicate sequence:
+  Existing: Z00006|IGKV1-13*02|Homo_sapiens|F|V-REGION|939..1225|287 nt|1| | | | |287+0=287| | |
+  Current:  KM455562|IGKV1D-13*02|Homo_sapiens|F|V-REGION|187..473|287 nt|1| | | | |287+0=287| | |
+  Keeping: Z00006|IGKV1-13*02|Homo_sapiens|F|V-REGION|939..1225|287 nt|1| | | | |287+0=287| | | (first occurrence or equal/higher priority)
+Found duplicate sequence:
+  Existing: M64856|IGKV1-33*01|Homo_sapiens|F|V-REGION|321..607|287 nt|1| | | | |287+0=287| | |
+  Current:  M64855|IGKV1D-33*01|Homo_sapiens|F|V-REGION|321..607|287 nt|1| | | | |287+0=287| | |
+  Keeping: M64856|IGKV1-33*01|Homo_sapiens|F|V-REGION|321..607|287 nt|1| | | | |287+0=287| | | (first occurrence or equal/higher priority)
+Found duplicate sequence:
+  Existing: Z00005|IGKV1-35*02|Homo_sapiens|P|V-REGION|163..449|287 nt|1| | | | |287+0=287| | |
+  Current:  Z00005|IGKV1D-35*02|Homo_sapiens|P|V-REGION|163..449|287 nt|1| | | | |287+0=287| | |
+  Keeping: Z00005|IGKV1-35*02|Homo_sapiens|P|V-REGION|163..449|287 nt|1| | | | |287+0=287| | | (first occurrence or equal/higher priority)
+Found duplicate sequence:
+  Existing: X59316|IGKV1-37*01|Homo_sapiens|ORF|V-REGION|546..832|287 nt|1| | | | |287+0=287| | |
+  Current:  X71893|IGKV1D-37*01|Homo_sapiens|ORF|V-REGION|627..913|287 nt|1| | | | |287+0=287| | |
+  Keeping: X59316|IGKV1-37*01|Homo_sapiens|ORF|V-REGION|546..832|287 nt|1| | | | |287+0=287| | | (first occurrence or equal/higher priority)
+Found duplicate sequence:
+  Existing: X59315|IGKV1-39*01|Homo_sapiens|F|V-REGION|324..610|287 nt|1| | | | |287+0=287| | |
+  Current:  X59312|IGKV1D-39*01|Homo_sapiens|F|V-REGION|324..610|287 nt|1| | | | |287+0=287| | |
+  Keeping: X59315|IGKV1-39*01|Homo_sapiens|F|V-REGION|324..610|287 nt|1| | | | |287+0=287| | | (first occurrence or equal/higher priority)
+Found duplicate sequence:
+  Existing: X51883|IGKV2/OR2-4*01|Homo_sapiens|P|V-REGION|775..1078|304 nt|1| | | | |304+0=304| | |
+  Current:  X51881|IGKV2/OR2-7*01|Homo_sapiens|P|V-REGION|686..989|304 nt|1| | | | |304+0=304| | |
+  Keeping: X51883|IGKV2/OR2-4*01|Homo_sapiens|P|V-REGION|775..1078|304 nt|1| | | | |304+0=304| | | (first occurrence or equal/higher priority)
+Found duplicate sequence:
+  Existing: X51883|IGKV2/OR2-4*01|Homo_sapiens|P|V-REGION|775..1078|304 nt|1| | | | |304+0=304| | |
+  Current:  AC092683|IGKV2/OR2-7D*01|Homo_sapiens|P|V-REGION|103645..103948|304 nt|1| | | | |304+0=304| | |
+  Keeping: X51883|IGKV2/OR2-4*01|Homo_sapiens|P|V-REGION|775..1078|304 nt|1| | | | |304+0=304| | | (first occurrence or equal/higher priority)
+Found duplicate sequence:
+  Existing: X51886|IGKV2/OR2-10*01|Homo_sapiens|P|V-REGION|687..986|300 nt|1| | | | |300+0=300| | |
+  Current:  X51880|IGKV2/OR2-8*01|Homo_sapiens|P|V-REGION|674..973|300 nt|1| | | | |300+0=300| | |
+  Keeping: X51886|IGKV2/OR2-10*01|Homo_sapiens|P|V-REGION|687..986|300 nt|1| | | | |300+0=300| | | (first occurrence or equal/higher priority)
+Found duplicate sequence:
+  Existing: X63397|IGKV2-28*01|Homo_sapiens|F|V-REGION|739..1040|302 nt|1| | | | |302+0=302| | |
+  Current:  X12691|IGKV2D-28*01|Homo_sapiens|F|V-REGION|738..1039|302 nt|1| | | | |302+0=302| | |
+  Keeping: X63397|IGKV2-28*01|Homo_sapiens|F|V-REGION|739..1040|302 nt|1| | | | |302+0=302| | | (first occurrence or equal/higher priority)
+Found duplicate sequence:
+  Existing: X59314|IGKV2-40*01|Homo_sapiens|F|V-REGION|1320..1624|305 nt|1| | | | |305+0=305| | |
+  Current:  X59311|IGKV2D-40*01|Homo_sapiens|F|V-REGION|577..881|305 nt|1| | | | |305+0=305| | |
+  Keeping: X59314|IGKV2-40*01|Homo_sapiens|F|V-REGION|1320..1624|305 nt|1| | | | |305+0=305| | | (first occurrence or equal/higher priority)
+Found duplicate sequence:
+  Existing: X71891|IGKV3-34*01|Homo_sapiens|P|V-REGION|833..1120|288 nt|1| | | | |288+0=288| | |
+  Current:  X71895|IGKV3D-34*01|Homo_sapiens|P|V-REGION|833..1120|288 nt|1| | | | |288+0=288| | |
+  Keeping: X71891|IGKV3-34*01|Homo_sapiens|P|V-REGION|833..1120|288 nt|1| | | | |288+0=288| | | (first occurrence or equal/higher priority)
+Found duplicate sequence:
+  Existing: X74460|IGKV3/OR2-268*02|Homo_sapiens|ORF|V-REGION|370..659|290 nt|1| | | | |290+0=290| | |
+  Current:  X72820|IGKV3D-7*01|Homo_sapiens|F|V-REGION|685..974|290 nt|1| | | | |290+0=290| | |
+  Keeping: X72820|IGKV3D-7*01|Homo_sapiens|F|V-REGION|685..974|290 nt|1| | | | |290+0=290| | | (higher priority)
+Found duplicate sequence:
+  Existing: X63399|IGKV6-21*01|Homo_sapiens|F|V-REGION|774..1060|287 nt|1| | | | |287+0=287| | |
+  Current:  X12683|IGKV6D-21*01|Homo_sapiens|F|V-REGION|645..931|287 nt|1| | | | |287+0=287| | |
+  Keeping: X63399|IGKV6-21*01|Homo_sapiens|F|V-REGION|774..1060|287 nt|1| | | | |287+0=287| | | (first occurrence or equal/higher priority)
+Saving output to IGKV-IMGT-allele-db-no_duplicates.fa

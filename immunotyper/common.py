@@ -19,32 +19,66 @@ def resource_path(key, data_dir_path=DATA_DIR):
     return pkg_resources.resource_filename(data_dir_path, key)
 
 db_resource_path = lambda x: resource_path(x, 'immunotyper.data.allele_databases')
-databases = {'ighv': {'db_fasta_path': db_resource_path('IGHV-IMGT-allele-db-aligned.fasta'),
-                                                                'consensus_path': db_resource_path('IGHV-IMGT-allele-db-consensus.fasta'),
-                                                                'ignored_alleles_path': resource_path('ignored_alleles.txt')},
-                'iglv': {'db_fasta_path': db_resource_path('IGLV-IMGT-allele-db-aligned.fasta'),
-                                                                'consensus_path': db_resource_path('IGLV-IMGT-allele-db-consensus.fasta')},
-                'trav': {'db_fasta_path': db_resource_path('IMGT_TRAV_reference_allele_db-aligned.fasta'),
-                                                            'consensus_path': db_resource_path('IMGT_TRAV_reference_allele_db-consensus.fasta')},
-                'trbv': {'db_fasta_path': db_resource_path('TRBV-IMGT-allele-db-aligned.fasta'),
-                                                            'consensus_path': db_resource_path('TRBV-IMGT-allele-db-consensus.fasta')},
-                'trdv': {'db_fasta_path': db_resource_path('TRDV-IMGT-allele-db-aligned.fasta'),
-                                                            'consensus_path': db_resource_path('TRDV-IMGT-allele-db-consensus.fasta')},
-                'trgv': {'db_fasta_path': db_resource_path('TRGV-IMGT-allele-db-aligned.fasta'),
-                                                            'consensus_path': db_resource_path('TRGV-IMGT-allele-db-consensus.fasta')},
-                'igkv':  {'db_fasta_path': db_resource_path('IGKV-IMGT-allele-db-aligned.fasta'),
-                                                            'consensus_path': db_resource_path('IGKV-IMGT-allele-db-consensus.fasta')}}
+# ... existing code ...
 
+class AlleleDatabaseMissingException(Exception):
+    """Exception raised when the allele database for a given gene type is missing."""
+    pass
 
+supported_gene_types = {'IGHV', 'IGKV', 'IGLV', 'TRBV', 'TRDV', 'TRGV', 'TRAV'}
+def get_database_config(gene_type):
+    """
+    Returns the database configuration for the specified gene type.
 
-allele_db_mapping_path = {'ighv': db_resource_path('IGHV-IMGT-allele-db-no_duplicates+Ns.fa'),
-                        'iglv': db_resource_path('IGLV-IMGT-allele-db-no_duplicates+Ns.fasta'),
-                        'trav': db_resource_path('IMGT_TRAV_reference_allele_db+Ns.fasta'),
-                        'trbv': db_resource_path('TRBV-IMGT-allele-db-no_duplicates+Ns.fa'),
-                        'trdv': db_resource_path('TRDV-IMGT-allele-db+Ns.fa'),
-                        'trgv': db_resource_path('TRGV-IMGT-allele-db+Ns.fa'),
-                        'igkv': db_resource_path('IGKV-IMGT-allele-db-no_duplicates+Ns.fa')}
+    Args:
+        gene_type (str): The gene type for which to retrieve the database configuration.
 
+    Returns:
+        dict: A dictionary containing paths to the database files for the specified gene type.
+
+    Raises:
+        AlleleDatabaseMissingException: If the gene type is not supported.
+    """
+    if gene_type.upper() not in supported_gene_types:
+        raise AlleleDatabaseMissingException(f"Allele database for gene type '{gene_type}' is missing.")
+
+    base_config = {
+        'db_fasta_path': '{}/{}-IMGT-allele-db-aligned.fasta',
+        'consensus_path': '{}/{}-IMGT-allele-db-consensus.fasta',
+        'gene_clusters_path': '{}/{}-IMGT-allele-db-gene_clusters.tsv',
+        'gene_type': gene_type.upper()
+    }
+
+    # Update the paths with the specific gene type
+    for key, template in base_config.items():
+        if template and '{}' in template:
+            base_config[key] = db_resource_path(template.format(gene_type.upper(), gene_type.upper()))
+
+    # Add ignored_alleles_path for IGHV specifically
+    if gene_type.lower() == 'ighv':
+        base_config['ignored_alleles_path'] = db_resource_path('IGHV-ignored_alleles.txt')
+
+    return base_config
+
+def get_allele_db_mapping_path(gene_type):
+    """
+    Returns the database resource path for the specified gene type.
+
+    Args:
+        gene_type (str): The gene type for which to retrieve the database path.
+
+    Returns:
+        str: The full path of the database resource.
+
+    Raises:
+        AlleleDatabaseMissingException: If the gene type is not supported.
+    """
+    if gene_type.upper() not in supported_gene_types:
+        raise AlleleDatabaseMissingException(f"Allele database for gene type '{gene_type}' is missing.")
+
+    return db_resource_path(f'{gene_type.upper()}/{gene_type.upper()}-IMGT-allele-db-no_duplicates+Ns.fa')
+
+# ... existing code ...
 
 def header(string):
     return '\n\n' + '-'*len(string) + string + '-'*len(string) + '\n\n'
@@ -365,3 +399,7 @@ def suppress_stdout():
 
 def run_command(command_string: str, *args, **kwargs):
     os.system(command_string)
+
+
+
+

@@ -1,7 +1,7 @@
 import argparse, os
 from posixpath import splitext
 from .allele_database import ImgtNovelAlleleDatabase
-from .common import log, initialize_logger, databases, allele_db_mapping_path
+from .common import log, initialize_logger, get_database_config, get_allele_db_mapping_path
 from .bam_filter_classes import BamFilterImplemented, IghHg38BamFilter
 from Bio import SeqIO
 from statistics import mean
@@ -156,7 +156,7 @@ def run_immunotyper(bam_path: str,  ref: str='',
         solver_time_limit (int, optional): _description_. Defaults to 1.
         threads (int, optional): _description_. Defaults to 6.
     """
-    allele_db = ImgtNovelAlleleDatabase(**databases[gene_type])
+    allele_db = ImgtNovelAlleleDatabase(**get_database_config(gene_type))
 
     output_prefix = os.path.splitext(os.path.basename(bam_path))[0]
     initialize_logger(os.path.join(output_dir, f'{output_prefix}-{gene_type}-immunotyper-debug'))
@@ -183,7 +183,7 @@ def run_immunotyper(bam_path: str,  ref: str='',
     allele_db.make_landmarks(landmark_groups*landmarks_per_group, READ_LENGTH, READ_DEPTH, VARIANCE, EDGE_VARIANCE, 50, landmark_groups)
 
     # Make read mappings to allele database and filter
-    flanking_filter = BowtieFlankingFilter(reference_path=allele_db_mapping_path[gene_type],
+    flanking_filter = BowtieFlankingFilter(reference_path=get_allele_db_mapping_path(gene_type),
                                     write_cache_path = write_cache_path if write_cache_path else None,
                                     load_cache_path = write_cache_path if write_cache_path else None)
                                    
