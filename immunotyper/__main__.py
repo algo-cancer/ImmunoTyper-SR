@@ -10,6 +10,7 @@ from .candidate_builder_classes import BwaMappingsCandidateBuilder
 from .solvers import GurobiSolver
 from .models import ShortReadModelTotalErrorDiscardObj
 from .common import resource_path
+from .post_processing import PostProcessorModel
 
 
 implemented_solvers = {'gurobi': GurobiSolver}
@@ -220,6 +221,20 @@ def run_immunotyper(bam_path: str,  ref: str='',
         for c in model.get_allele_calls(functional_only=False):
             f.write(c+'\n')
 
+    # Call SNVs
+    post_processor = PostProcessorModel(model, allele_db, sequencing_depth=READ_DEPTH)
+
+    # Ensure the output VCF directory exists
+    output_vcf_dir = os.path.join(output_dir, os.path.splitext(os.path.basename(bam_path))[0]+'-novel_variant_vcfs')
+    os.makedirs(output_vcf_dir, exist_ok=True)
+
+    output_path = os.path.join(output_dir, os.path.splitext(os.path.basename(bam_path))[0]+'-novel-variants.txt')
+    log.info(f'Writing novel variants to: {output_path}')
+    
+    post_processor.write_all_variants(
+        output_path=output_path,
+        output_vcf_dir=output_vcf_dir
+    )
 
 if __name__ == '__main__':
 	main() 

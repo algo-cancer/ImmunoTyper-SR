@@ -53,11 +53,9 @@ class AlleleDatabase(ABC, Iterator):
                 self.load_gene_clusters(gene_clusters_path)
             else:
                 log.warn('\nGene clusters file does not exist at {}'.format(gene_clusters_path))
-        elif gene_clusters_path == None:
+        else:
             self.gene_clusters = []
             self.gene_in_cluster = {}
-        else:
-            self.gene_clusters = None
 
 
         # load ignored alleles

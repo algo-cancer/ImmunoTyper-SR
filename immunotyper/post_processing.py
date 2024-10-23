@@ -1,18 +1,30 @@
-import os, pysam
-from tempfile import TemporaryFile
+import os, pysam, time
+from tempfile import TemporaryFile, TemporaryDirectory
 from typing import Tuple, List
 from venv import create
 from .common import create_temp_file as ctf
-from .common import fasta_from_seq, suppress_stdout, Read, log, run_command
+from .common import fasta_from_seq, suppress_stdout, Read, log
 from .mapper_wrappers import BowtieWrapper
 from statistics import mean
 from Bio import SeqIO
 from glob import glob
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import subprocess
+import shutil
 
 def create_temp_file(*args, **kwargs):
     kwargs['delete'] = False
     return ctf(*args, **kwargs)
 
+def run_command(command: str, check: bool = True) -> None:
+    log.debug(f'Running {command}')
+    try:
+        # Run the command using subprocess.run()
+        result = subprocess.run(command, shell=True, check=check, stderr=subprocess.PIPE, text=True)
+    except subprocess.CalledProcessError as e:
+        # If the command fails and check is True, raise an exception with stderr
+        stderr_output = e.stderr.strip()
+        raise RuntimeError(f"Command '{command}' failed with error: {str(e)}\nStderr: {stderr_output}")
 
 class PostProcessor(object):
 
@@ -24,10 +36,12 @@ class PostProcessor(object):
     gene_type = 'IGHV'
 
 
-    def __init__(self, sequencing_depth: int, read_assignment, input_reads, calls, allele_db, minimum_coding_bases: int = 50) -> None:
+    def __init__(self, sequencing_depth: int, read_assignment, input_reads, calls, allele_db, minimum_coding_bases: int = 50, single_copy_depth: int = None) -> None:
         '''
         Args
-            sequencing_depth            Single copy / haploid sequencing depth'''
+            sequencing_depth            Single copy / haploid sequencing depth
+            single_copy_depth           Depth for a single copy gene. Used for filtering variants. If None, assumed to be 1/2 sequencing_depth.
+        '''
         self.gene_mapped_reads_bam_paths = {}
         self.reference_target_fa_paths = {}
         self.vcf_variants = {}
@@ -38,6 +52,7 @@ class PostProcessor(object):
         self.allele_db = allele_db
         self.calls = calls
         self.set_calls(self.calls)
+        self.single_copy_depth = single_copy_depth if single_copy_depth is not None else sequencing_depth/2
 
 
     def set_calls(self, raw_calls):
@@ -74,75 +89,107 @@ class PostProcessor(object):
         else:
             return True
         
-    def call_snvs(self, gene: str, mapping_target: str, override_gene_alleles: List[str] = []):
+    def call_snvs(self, gene: str, mapping_target: str, override_gene_alleles: List[str] = [], output_vcf_dir: str = None):
         '''Calls variants against mapping_target, using reads from called alleles of gene, or alleles in override_gene_alleles
         Sets self.vcf_variants'''
         alleles = override_gene_alleles if override_gene_alleles else [a for a in self.calls if gene == self.allele_db[a].gene]
+        ploidy = len(alleles)
 
+        temp_dir = TemporaryDirectory()
+        try:
+            self._process_snvs(gene, mapping_target, alleles, ploidy, temp_dir.name, output_vcf_dir)
+        finally:
+            temp_dir.cleanup()
+
+    def _process_snvs(self, gene, mapping_target, alleles, ploidy, temp_dir, output_vcf_dir):
         # Check if mapping already performed, otherwise call self.map_gene_assignments_to_wildtype
         try:
             mapping_target_path = self.reference_target_fa_paths[mapping_target]
             bam_path = self.gene_mapped_reads_bam_paths[mapping_target][frozenset(alleles)]
         except KeyError:
-            self.map_gene_assignments_to_wildtype(gene, mapping_target, override_gene_alleles)
+            self.map_gene_assignments_to_wildtype(gene, mapping_target, alleles, temp_dir)
             mapping_target_path = self.reference_target_fa_paths[mapping_target]
             bam_path = self.gene_mapped_reads_bam_paths[mapping_target][frozenset(alleles)]
 
         # make vcf
-        bcf = create_temp_file(suffix='.bcf')
-        bcf_path = ''.join([x for x in bcf.name])
-        command = f"bcftools mpileup -f {mapping_target_path} {bam_path} | bcftools call -mv -Ob -o {bcf_path}"
+        bcf_path = os.path.join(temp_dir, 'output.bcf')
+        
+        # Filter variants using minimum depth
+        min_depth = self.single_copy_depth // 3
+        command = f"freebayes -f {mapping_target_path} -p {ploidy} -C {int(min_depth)} {bam_path} | bcftools view -Ob -o {bcf_path}"
         run_command(command, check=True)
 
+        # Index the BCF file
+        bcf_index_command = f"bcftools index {bcf_path}"
+        run_command(bcf_index_command, check=True)
+
+        phased_vcf_path = os.path.join(temp_dir, 'phased_output.vcf')
+        if ploidy == 1:
+            # Call variants using freebayes for single copy
+            bcftools_cmd = f"bcftools view -Ov -o {phased_vcf_path} {bcf_path}"
+            run_command(bcftools_cmd, check=True)
+            whatshap_cmd = ''
+        elif ploidy == 2:
+            # Phase variants using whatshap for ploidy == 2
+            whatshap_cmd = f"whatshap phase -r {mapping_target_path} --only-snvs -o {phased_vcf_path} {bcf_path} {bam_path}"
+            run_command(whatshap_cmd, check=True)
+        else:
+            # Phase variants using whatshap polyphase for ploidy > 2
+            whatshap_cmd = f"whatshap polyphase --ploidy {ploidy} -r {mapping_target_path} --only-snvs -o {phased_vcf_path} {bcf_path} {bam_path}"
+            run_command(whatshap_cmd, check=True)
+
+        # Use pysam.VariantFile to read the VCF and store records
+        with pysam.VariantFile(phased_vcf_path) as vcf:
+            records = list(vcf)  # Store records in a list
+
+        # Check if there are any variant records
+        has_variants = bool(records)
+
+        if output_vcf_dir and has_variants:
+            output_vcf_path = os.path.join(output_vcf_dir, f"{gene}_variants.vcf")
+            shutil.copy(phased_vcf_path, output_vcf_path)
+
+        # Load variants into memory
         try:
-            self.vcf_variants[mapping_target][frozenset(alleles)] = dict([(x.pos, (x.ref, x.alts)) for x in pysam.VariantFile(str(bcf_path))])
+            self.vcf_variants[mapping_target][frozenset(alleles)] = {
+                record.pos: (record.ref, record.alts) for record in records
+            }
         except KeyError:
-            self.vcf_variants[mapping_target] = {frozenset(alleles): dict([(x.pos, (x.ref, x.alts)) for x in pysam.VariantFile(str(bcf_path))])}
-        except ValueError as e:
-            log.error(f"Error running {command}:")
-            raise e
+            self.vcf_variants[mapping_target] = {
+                frozenset(alleles): {
+                    record.pos: (record.ref, record.alts) for record in records
+                }
+            }
 
     
-    def call_all_snvs(self):
-        for gene in self.functional_gene_calls:
+    def call_all_snvs(self, output_vcf_dir: str = None):
+        '''Calls SNVs for all genes and gene clusters and writes to the specified directory if provided.'''
+        for gene in set(self.functional_gene_calls):
             if gene not in self.allele_db.gene_in_cluster:
+                log.debug(f'Calling variants for {gene}')
                 mapping_target = self.allele_db.get_wildtype_target(gene)
-                # print(f"Calling variants for {gene} against {mapping_target}")
-                try:
-                    self.call_snvs(gene, mapping_target)
-                except Exception as e:
-                    log.warn(f"Exception calling SNVs for {gene} against {mapping_target}: {str(e)}")
-                    raise e
+                self.call_snvs(gene, mapping_target, output_vcf_dir=output_vcf_dir)
         for cluster in self.allele_db.gene_clusters:
             called = [g for g in cluster if g in self.gene_calls]
+            log.debug(f'Calling variants for cluster: {"-".join(called)}')
             if called:
                 alleles = [a for a in self.functional_calls if self.allele_db[a].gene in called]
                 mapping_target = self.allele_db.get_wildtype_target(cluster[0])
-                try:
-                    self.call_snvs(called[0], mapping_target, override_gene_alleles=alleles)
-                except Exception as e:
-                    log.warn(f"Exception calling SNVs for {str(called)} group against {mapping_target}: {str(e)}")
+                self.call_snvs(called[0], mapping_target, override_gene_alleles=alleles, output_vcf_dir=output_vcf_dir)
 
-
-
-    def map_gene_assignments_to_wildtype(self, gene: str, mapping_target: str, override_gene_alleles: List[str] = []) -> None:
+    def map_gene_assignments_to_wildtype(self, gene: str, mapping_target: str, alleles: List[str], temp_dir: str) -> None:
         '''
         Args
             gene (str)                          Gene with which to collect assigned reads
             mapping_target (str)                Target to map reads against for variant calling. Usually wildtype
-            override_gene_alleles (list)        Alleles to collect reads from. If == None, collects reads from call alleles of gene
-            '''
+            alleles (list)                      Alleles to collect reads from
+            temp_dir (str)                      Directory to store temporary files
+        '''
         
         # collect reads
-        if override_gene_alleles:
-            gene_assigned_reads = [r for a in override_gene_alleles for r in self.read_assignment[a]]
-            alleles = override_gene_alleles
-        else: # get reads from all called alleles of gene
-            alleles = [a for a in self.calls if gene == self.allele_db[a].gene]
-            gene_assigned_reads = [r for a in alleles for r in self.read_assignment[a]]
-        # print(f"Alleles = {str(alleles)}")
+        gene_assigned_reads = [r for a in alleles for r in self.read_assignment[a]]
         
-        _, reference_fa, bam_path = self.map(gene_assigned_reads, self.allele_db[mapping_target])
+        _, reference_fa, bam_path = self.map(gene_assigned_reads, self.allele_db[mapping_target], temp_dir)
 
         try:
             self.gene_mapped_reads_bam_paths[mapping_target][frozenset(alleles)] = bam_path
@@ -150,17 +197,18 @@ class PostProcessor(object):
             self.gene_mapped_reads_bam_paths[mapping_target] = {frozenset(alleles): bam_path}
         self.reference_target_fa_paths[mapping_target] = reference_fa
 
-    def map(self, query: List[Read], target: Read) -> Tuple[str, str, str]:
-        query = create_temp_file(write_data=fasta_from_seq(*zip(*[(x.id, x.seq) for x in query])), suffix='.fa')
-        target = create_temp_file(write_data=fasta_from_seq(target.id, target.seq))
-        sam = create_temp_file(suffix='.sam')
+    def map(self, query: List[Read], target: Read, temp_dir: str) -> Tuple[str, str, str]:
+        query = create_temp_file(write_data=fasta_from_seq(*zip(*[(x.id, x.seq) for x in query])), suffix='.fa', dir=temp_dir)
+        target = create_temp_file(write_data=fasta_from_seq(target.id, target.seq), dir=temp_dir)
+        sam = create_temp_file(suffix='.sam', dir=temp_dir)
         sam_path = sam.name
         
         # map reads, call variants
         with suppress_stdout():
             self.mapper.index_reference(target.name)
             self.mapper.map(query.name, target.name, output_path=sam_path)
-        run_command(f"samtools view -b {sam_path} | samtools sort - > {sam_path.replace('sam', 'bam')}")
+            bam_path = sam_path.replace('sam', 'bam')
+            run_command(f"samtools view -b {sam_path} | samtools sort - > {bam_path} && samtools index {bam_path}")
         sam.close()
         return query.name, target.name, sam_path.replace('sam', 'bam')
 
@@ -181,7 +229,7 @@ class PostProcessor(object):
         try:
             bam_path = self.gene_mapped_reads_bam_paths[mapping_target][frozenset(called_alleles)]
         except KeyError:
-            self.map_gene_assignments_to_wildtype(gene, mapping_target, override_gene_alleles)
+            self.map_gene_assignments_to_wildtype(gene, mapping_target, called_alleles, temp_dir)
             bam_path = self.gene_mapped_reads_bam_paths[mapping_target][frozenset(called_alleles)]
         
         # get depth array
@@ -220,15 +268,17 @@ class PostProcessor(object):
                         variant_labels.append(".".join([gene, str(pos), ref+a]))
         return variant_labels
     
-    def write_all_variants(self, output_path):
-        '''Writes all SNV variants provided by self.get_all_variants to output_path. Calls self.call_all_snvs if needed'''
+    def write_all_variants(self, output_path: str, output_vcf_dir: str = None):
+        '''Writes all SNV variants provided by self.get_all_variants to output_path. Calls self.call_all_snvs if needed.'''
         try:
             var = self.get_all_variants()
         except AttributeError:
-            self.call_all_snvs()
+            self.call_all_snvs(output_vcf_dir=output_vcf_dir)
             var = self.get_all_variants()
         
         with open(output_path, 'w') as f:
+            if not var:
+                log.info('No novel variants found!')
             for v in var:
                 f.write(v+'\n')
             
@@ -286,7 +336,7 @@ class PostProcessorOutput(PostProcessor):
         kwargs.update({'read_assignment': read_assignment,
                         'allele_db': allele_db,
                         'input_reads': input_reads,
-                        'calls': calls
+                        'calls': calls,
                         })
 
         super().__init__(*args, **kwargs)
@@ -333,3 +383,17 @@ class PostProcessorOutput(PostProcessor):
             if a not in self.allele_db:
                 raise ValueError(f"Allele call {a} from {calls_path} not in database")
         return calls
+
+
+
+
+
+
+
+
+
+
+
+
+
+
