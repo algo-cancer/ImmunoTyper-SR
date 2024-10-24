@@ -228,7 +228,7 @@ def run_immunotyper(bam_path: str,  ref: str='',
     output_vcf_dir = os.path.join(output_dir, os.path.splitext(os.path.basename(bam_path))[0]+'-novel_variant_vcfs')
     os.makedirs(output_vcf_dir, exist_ok=True)
 
-    output_path = os.path.join(output_dir, os.path.splitext(os.path.basename(bam_path))[0]+'-novel-variants.txt')
+    output_path = os.path.join(output_dir, os.path.splitext(os.path.basename(bam_path))[0]+'-novel-variants.tsv')
     log.info(f'Writing novel variants to: {output_path}')
     
     post_processor.write_all_variants(
