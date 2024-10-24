@@ -161,7 +161,66 @@ class PostProcessor(object):
                     record.pos: (record.ref, record.alts) for record in records
                 }
             }
+        
+        # Filter variants
 
+    def filter_known_variants(self):
+        """Filters out variants that are present in any of the called alleles relative to the mapping target.
+        Modifies self.vcf_variants in place by removing known variants."""
+        
+        # Process individual genes
+        for gene in set(self.functional_gene_calls):
+            if gene not in self.allele_db.gene_in_cluster:
+                mapping_target = self.allele_db.get_wildtype_target(gene)
+                called_alleles = [a for a in self.calls if self.allele_db[a].gene == gene]
+                self._filter_variants_for_alleles(mapping_target, called_alleles)
+        
+        # Process gene clusters
+        for cluster in self.allele_db.gene_clusters:
+            called = [g for g in cluster if g in self.gene_calls]
+            if called:
+                mapping_target = self.allele_db.get_wildtype_target(cluster[0])
+                called_alleles = [a for a in self.functional_calls if self.allele_db[a].gene in called]
+                self._filter_variants_for_alleles(mapping_target, called_alleles)
+
+    def _filter_variants_for_alleles(self, mapping_target: str, called_alleles: List[str]):
+        """Helper function to filter variants for a set of alleles against a mapping target."""
+        if mapping_target not in self.vcf_variants:
+            return
+            
+        allele_set = frozenset(called_alleles)
+        if allele_set not in self.vcf_variants[mapping_target]:
+            return
+            
+        # Collect all known variants from called alleles
+        known_variants = set()
+        for allele in called_alleles:
+            snps = self.allele_db[allele].get_snps(self.allele_db[mapping_target])
+            for pos, var in snps:
+                # Convert SNP.XY format to (pos, ref, alt)
+                ref = var[4]  # X in SNP.XY
+                alt = var[5]  # Y in SNP.XY
+                known_variants.add((pos, ref, alt))
+        
+        # Filter out known variants
+        variants_dict = self.vcf_variants[mapping_target][allele_set]
+        filtered_variants = {}
+        
+        for pos, (ref, alts) in variants_dict.items():
+            # Keep variants that aren't in known_variants
+            filtered_alts = tuple(alt for alt in alts 
+                                if (pos, ref, alt) not in known_variants)
+            if filtered_alts:  # Only keep position if there are remaining alternate alleles
+                filtered_variants[pos] = (ref, filtered_alts)  # Maintain (ref, alts) tuple format
+        
+        # Update the variants dictionary
+        if filtered_variants:
+            self.vcf_variants[mapping_target][allele_set] = filtered_variants
+        else:
+            # If no variants remain, remove the entry
+            del self.vcf_variants[mapping_target][allele_set]
+            if not self.vcf_variants[mapping_target]:
+                del self.vcf_variants[mapping_target]
     
     def call_all_snvs(self, output_vcf_dir: str = None):
         '''Calls SNVs for all genes and gene clusters and writes to the specified directory if provided.'''
@@ -177,6 +236,9 @@ class PostProcessor(object):
                 alleles = [a for a in self.functional_calls if self.allele_db[a].gene in called]
                 mapping_target = self.allele_db.get_wildtype_target(cluster[0])
                 self.call_snvs(called[0], mapping_target, override_gene_alleles=alleles, output_vcf_dir=output_vcf_dir)
+        
+        # Filter variants
+        self.filter_known_variants()
 
     def map_gene_assignments_to_wildtype(self, gene: str, mapping_target: str, alleles: List[str], temp_dir: str) -> None:
         '''
@@ -247,11 +309,11 @@ class PostProcessor(object):
         
 
     def get_all_variants(self):
-        '''Formats all variants from self.vcf_variants into list of strings of the form "gene_id:positions:alt_nucleotide
+        '''Formats all variants from self.vcf_variants into list of strings of the form "gene\tposition\tref\talt"
         Ensures duplicates dont happen by naive method: ensure no allele is includes in a vcf call set more than once, otherwise 
         raise ValueError
 
-        Returns list of variant strings'''
+        Returns list of tab-delimited variant strings'''
         if not self.vcf_variants:
             raise AttributeError(f"SNVs not called!")
         variant_labels = []
@@ -266,7 +328,7 @@ class PostProcessor(object):
                 already_processed = already_processed.union(alleles)
                 for pos, (ref, alts) in var.items():
                     for a in alts:
-                        variant_labels.append(".".join([gene, str(pos), ref+a]))
+                        variant_labels.append(f"{gene}\t{pos}\t{ref}\t{a}")
         return variant_labels
     
     def write_all_variants(self, output_path: str, output_vcf_dir: str = None):
@@ -280,8 +342,10 @@ class PostProcessor(object):
         with open(output_path, 'w') as f:
             if not var:
                 log.info('No novel variants found!')
-            for v in var:
-                f.write(v+'\n')
+            else:
+                f.write("gene\tposition\tref\talt\n")  # Header
+                for v in var:
+                    f.write(v+'\n')
             
 
 class PostProcessorModel(PostProcessor):
@@ -384,6 +448,7 @@ class PostProcessorOutput(PostProcessor):
             if a not in self.allele_db:
                 raise ValueError(f"Allele call {a} from {calls_path} not in database")
         return calls
+
 
 
 
