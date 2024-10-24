@@ -2,7 +2,9 @@
 
 **ImmunoTyper-SR** is a powerful tool for Immunoglobulin Variable Gene genotyping and CNV analysis from whole genome sequencing (WGS) short reads using ILP Optimization. Check out our [paper here](https://www.cell.com/cell-systems/fulltext/S2405-4712(22)00352-0?_returnURL=https%3A%2F%2Flinkinghub.elsevier.com%2Fretrieve%2Fpii%2FS2405471222003520%3Fshowall%3Dtrue) for more details.
 
-📢 **New Feature:** Now supporting V gene calling for all IG and TR loci! (IGH, IGL, IGK, TRA, TRB, TRG, TRD) 🎉
+📢 **New Feature:** 
+- Now supporting V gene calling for **all IG and TR loci!** (IGH, IGL, IGK, TRA, TRB, TRG, TRD) 🎉
+- **Novel Variant Calling**: Identify novel variants for all gene calls using FreeBayes and WhatsHap. Variants are listed in `<prefix>-<gene_type>-novel-variants.txt` and phased VCFs are available in `<prefix>-<gene_type>-novel_variant_vcfs/<gene_id>_variants.vcf`.
 
 ## 🚀 Installation
 
@@ -77,8 +79,6 @@ python -m build
 pip install dist/<.tar.gz or .whl build>
 ```
 
-
-
 ## 🛠️ Running ImmunoTyper-SR:
 
 After installing with pip, use the command immunotyper-SR. The only required input is a BAM file. Outputs are generated in the current working directory, where <prefix> is the input BAM filename without the extension:
@@ -87,6 +87,8 @@ After installing with pip, use the command immunotyper-SR. The only required inp
 - <prefix>-<gene_type>_allele_calls.txt: Includes pseudogenes.
 - <prefix>-<gene_type>-extracted.fa: Reads extracted from the BAM used for analysis.
 - <prefix>-<gene_type>-immunotyper-debug.log: Log file.
+- <prefix>-<gene_type>-novel-variants.txt: List of novel variants called using FreeBayes and WhatsHap. Format: `gene.position.wildtype_alt`.
+- <prefix>-<gene_type>-novel_variant_vcfs/<gene_id>_variants.vcf: Phased VCFs for novel variants.
 
 IMPORTANT: If your BAM was mapped to GRCh37 use the `--hg37` flag. 
 
@@ -128,4 +130,3 @@ optional arguments:
                         Specific location and name of allele db sam mapping cache
   --threads THREADS     Max number of threads to use
   --no_coverage_estimation
-  ```
