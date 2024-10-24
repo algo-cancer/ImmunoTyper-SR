@@ -18,8 +18,9 @@ To run the image with Singularity (commonly used on HPCs), use the following com
 
 ```sh
 singularity pull docker://cdslsahinalp/immunotyper-sr
-singularity run -B <GUROBI_LICENSE_PATH>:/opt/gurobi/gurobi.lic -B <BAM_DIRECTORY>:<BAM_DIRECTORY> -B <OUTPUT_PATH>:/output immunotyper-sr_latest.sif <BAM_DIRECTORY>/<BAM_FILE>
+singularity run -B <GUROBI_LICENSE_PATH>:/opt/gurobi/gurobi.lic -B <BAM_DIRECTORY>:<BAM_DIRECTORY> -B <OUTPUT_PATH>:/output immunotyper-sr_latest.sif <OPTIONAL ARGUMENTS> <BAM_DIRECTORY>/<BAM_FILE> 
 ```
+You can find your gurobi license file path with `echo $GRB_LICENSE_FILE`.
 
 ### Conda + Pip
 
