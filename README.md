@@ -35,7 +35,9 @@ pip install <binary.whl>
 For the best experience, we recommend setting up a clean environment first:
 
 ```
-conda create -n immunotyper-SR -c bioconda python=3.8 bwa samtools
+conda create -n immunotyper-SR -c bioconda python=3.8 bwa bowtie2 freebayes whatshap
+conda install -y -n immunotyper-SR -c gurobi gurobi
+conda install -y -n immunotyper-SR -c conda-forge samtools
 conda activate immunotyper-SR
 pip install <binary.whl>
 ```
@@ -70,7 +72,9 @@ If the binary fails to install, you can build the tool from source:
 
 
 ```
-conda create -n immunotyper-SR -c bioconda python=3.8 bwa samtools
+conda create -n immunotyper-SR -c bioconda python=3.8 bwa bowtie2 freebayes whatshap
+conda install -y -n immunotyper-SR -c gurobi gurobi
+conda install -y -n immunotyper-SR -c conda-forge samtools
 conda activate immunotyper-SR
 git clone git@github.com:algo-cancer/ImmunoTyper-SR.git ./ImmunoTyper-SR
 cd ImmunoTyper-SR
