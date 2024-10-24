@@ -12,7 +12,7 @@ RUN git clone https://github.com/michael-ford/ImmunoTyper-SR.git
 # Create the conda environment and install required packages
 RUN conda config --prepend channels conda-forge
 RUN conda config --append channels bioconda
-RUN conda create -y -n immunotyper-SR -c bioconda python=3.8 bwa bowtie \
+RUN conda create -y -n immunotyper-SR -c bioconda python=3.8 bwa bowtie freebayes whatshap \
     && conda install -y -n immunotyper-SR -c gurobi gurobi && conda install -y -n immunotyper-SR -c conda-forge samtools
 
 # Install the ImmunoTyper-SR package
