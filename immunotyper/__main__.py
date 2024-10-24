@@ -1,7 +1,7 @@
 import argparse, os
 from posixpath import splitext
 from .allele_database import ImgtNovelAlleleDatabase
-from .common import log, initialize_logger, databases, allele_db_mapping_path
+from .common import log, initialize_logger, get_database_config, get_allele_db_mapping_path
 from .bam_filter_classes import BamFilterImplemented, IghHg38BamFilter
 from Bio import SeqIO
 from statistics import mean
@@ -10,6 +10,7 @@ from .candidate_builder_classes import BwaMappingsCandidateBuilder
 from .solvers import GurobiSolver
 from .models import ShortReadModelTotalErrorDiscardObj
 from .common import resource_path
+from .post_processing import PostProcessorModel
 
 
 implemented_solvers = {'gurobi': GurobiSolver}
@@ -20,7 +21,7 @@ implemented_models = {'ilp': ShortReadModelTotalErrorDiscardObj}
 parser = argparse.ArgumentParser(description='ImmunoTyper-SR: Ig Genotyping using Short Read WGS')
 
 parser.add_argument('bam_path', type=str, help='Input BAM file')
-parser.add_argument('--gene_type', choices=['ighv', 'iglv', 'trav', 'igkv'], default='ighv', help='Specify which genes to target')
+parser.add_argument('--gene_type', choices=['ighv', 'iglv', 'trav', 'igkv', 'trbv', 'trdv', 'trgv'], default='ighv', help='Specify which genes to target')
 parser.add_argument('--output_dir', default='', type=str, help='Path to output directory. Outputs txt file of allele calls with prefix matching input BAM file name.')
 
 
@@ -155,10 +156,10 @@ def run_immunotyper(bam_path: str,  ref: str='',
         solver_time_limit (int, optional): _description_. Defaults to 1.
         threads (int, optional): _description_. Defaults to 6.
     """
-    allele_db = ImgtNovelAlleleDatabase(**databases[gene_type])
+    allele_db = ImgtNovelAlleleDatabase(**get_database_config(gene_type))
 
     output_prefix = os.path.splitext(os.path.basename(bam_path))[0]
-    initialize_logger(os.path.join(output_dir, f'{output_prefix}-immunotyper-debug'))
+    initialize_logger(os.path.join(output_dir, f'{output_prefix}-{gene_type}-immunotyper-debug'))
 
     # Extract reads from BAM
     bam_filter = BamFilterImplemented(bam_path, gene_type, not hg37, reference_fasta_path=ref, output_path=output_dir)
@@ -182,7 +183,7 @@ def run_immunotyper(bam_path: str,  ref: str='',
     allele_db.make_landmarks(landmark_groups*landmarks_per_group, READ_LENGTH, READ_DEPTH, VARIANCE, EDGE_VARIANCE, 50, landmark_groups)
 
     # Make read mappings to allele database and filter
-    flanking_filter = BowtieFlankingFilter(reference_path=allele_db_mapping_path[gene_type],
+    flanking_filter = BowtieFlankingFilter(reference_path=get_allele_db_mapping_path(gene_type),
                                     write_cache_path = write_cache_path if write_cache_path else None,
                                     load_cache_path = write_cache_path if write_cache_path else None)
                                    
@@ -204,7 +205,7 @@ def run_immunotyper(bam_path: str,  ref: str='',
                             sequencing_error_rate=seq_error_rate)
 
     model.build(positive, candidates)
-    model.solve(time_limit=solver_time_limit*3600, threads=threads, log_path=None)
+    model.solve(time_limit=solver_time_limit*3600, threads=threads, log_path=os.path.join(output_dir, f'{output_prefix}-{gene_type}-gurobi.log'))
 
 
     # Write outputs
@@ -220,6 +221,20 @@ def run_immunotyper(bam_path: str,  ref: str='',
         for c in model.get_allele_calls(functional_only=False):
             f.write(c+'\n')
 
+    # Call SNVs
+    post_processor = PostProcessorModel(model, allele_db, sequencing_depth=READ_DEPTH)
+
+    # Ensure the output VCF directory exists
+    output_vcf_dir = os.path.join(output_dir, os.path.splitext(os.path.basename(bam_path))[0]+'-novel_variant_vcfs')
+    os.makedirs(output_vcf_dir, exist_ok=True)
+
+    output_path = os.path.join(output_dir, os.path.splitext(os.path.basename(bam_path))[0]+'-novel-variants.txt')
+    log.info(f'Writing novel variants to: {output_path}')
+    
+    post_processor.write_all_variants(
+        output_path=output_path,
+        output_vcf_dir=output_vcf_dir
+    )
 
 if __name__ == '__main__':
 	main() 

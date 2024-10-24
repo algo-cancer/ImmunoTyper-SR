@@ -2,7 +2,7 @@ from atexit import register
 import subprocess as sp
 import os, itertools, pysam
 from abc import ABC, abstractmethod
-from .common import Read, log, SeqRecord, fasta_from_seq, resource_path, allele_db_mapping_path
+from .common import Read, log, SeqRecord, fasta_from_seq, resource_path, get_allele_db_mapping_path
 from statistics import mean, pvariance
 from .read_filter_classes import TtnMappingFilter
 import subprocess
@@ -26,14 +26,16 @@ class BamFilter(ABC):
             file_type (str):                    Optional: define mapping file type
             primary_mapping_only (bool)         Optional: if True, only extracts reads with primary mapping to extraction regions'''
         log.info(f"Loading reads from {bam_file_path}...")
+        self.bam_file_path = bam_file_path
         if primary_mapping_only:
             self.primary_mapping_only = primary_mapping_only
         if not output_path:
             self.output_path = os.path.splitext(bam_file_path)[0]+f'-{self.gene_type}-extracted.fa'
         elif os.path.isdir(output_path):
-            self.output_path = os.path.join(output_path, os.path.splitext(os.path.basename(bam_file_path))[0]+'-extracted.fa')
+            self.output_path = os.path.join(output_path, os.path.splitext(os.path.basename(bam_file_path))[0]+f'-{self.gene_type}-extracted.fa')
         else:
             self.output_path = output_path
+        self.reference_fasta_path = reference_fasta_path
 
         # check input bam_file_path
         try:
@@ -51,20 +53,29 @@ class BamFilter(ABC):
         
         # load alignment with pysam
         try:
-            if self.file_type == 'rc':
-                if not reference_fasta_path:
-                    log.error(f"CRAM alignment file provided, please provide path to reference fasta")
-                    raise ValueError(f"CRAM alignment file provided, please provide path to reference fasta")
-                self.reference_fasta_path = reference_fasta_path
-                self.bam = pysam.AlignmentFile(bam_file_path, self.file_type, reference_filename=self.reference_fasta_path)
+            # Check if the file is CRAM and if it needs a reference fasta
+            if file_type == 'rc':
+                with pysam.AlignmentFile(bam_file_path, file_type) as bam_file:
+                    # Check if the CRAM file has an embedded reference
+                    if not bam_file.has_reference() and not reference_fasta_path:
+                        log.error("CRAM file requires external reference fasta, but none was provided.")
+                        raise AlignmentFileError("CRAM file requires external reference fasta, but none was provided.")
+                
+                # If reference is needed and provided, use it; else, load without it
+                if reference_fasta_path:
+                    self.bam = pysam.AlignmentFile(bam_file_path, file_type, reference_filename=reference_fasta_path)
+                else:
+                    self.bam = pysam.AlignmentFile(bam_file_path, file_type)
             else:
-                self.bam = pysam.AlignmentFile(bam_file_path, self.file_type)
-            self.bam_file_path = bam_file_path
-        except ValueError as e:
+                # For non-CRAM files, simply open the file
+                self.bam = pysam.AlignmentFile(bam_file_path, file_type)
+
+        except (AlignmentFileError, ValueError, OSError) as e:
             log.error(f"Problem loading alignment file: {str(e)}")
-            quit()
+            raise  # Let the exception propagate for better control in higher-level code
         
         # make dictionary of alternative chromosome ids
+        log.debug(f"Loading alternative chromosome ids from {self.alternative_chromosome_ids_path}")
         if self.alternative_chromosome_ids_path:
             with open(self.alternative_chromosome_ids_path, 'r') as f:
                 for line in f.readlines():
@@ -118,12 +129,16 @@ class BamFilter(ABC):
         self.print_read_count()
 
         if unmapped:
-            command = f"samtools fasta -f 0x4 {self.bam_file_path} | sed -E " + r's,/(.),-\1-un,' + f" >> {self.output_path}"
+            if self.file_type == 'rc':
+                command = f"samtools fasta -f 0x4 --reference {self.reference_fasta_path} {self.bam_file_path} | sed -E " + r's,/(.),-\1-un,' + f" >> {self.output_path}"
+            else:
+                command = f"samtools fasta -f 0x4 {self.bam_file_path} | sed -E " + r's,/(.),-\1-un,' + f" >> {self.output_path}"
             log.info(f"Extracting unmapped alignments using \n {command}")
             with open(self.output_path, 'a') as f_out:
                 if self.file_type == 'rc':
                     _env = {'REF_PATH': self.reference_fasta_path}
-                    p1 = sp.Popen(['samtools', 'view', '-h', f'{self.bam_file_path}', *(regions_str.split())], env=dict(os.environ, **_env), stdout=sp.PIPE)
+                    # p1 = sp.Popen(['samtools', 'view', '-h', f'{self.bam_file_path}', *(regions_str.split())], env=dict(os.environ, **_env), stdout=sp.PIPE)
+                    p1 = sp.Popen(['samtools', 'fasta', '-f', r'0x4', '--reference', f'{self.reference_fasta_path}', f'{self.bam_file_path}'], stdout=sp.PIPE)
                 else:
                     p1 = sp.Popen(['samtools', 'fasta', '-f', r'0x4', f'{self.bam_file_path}'], stdout=sp.PIPE)
                 p2 = sp.Popen(['sed', '-E', r"s;/(.);-\1-un;"], stdin=p1.stdout, stdout=f_out)
@@ -302,8 +317,7 @@ class BamFilterImplemented(BamFilter):
         self.alternative_chromosome_ids_path = resource_path('hg38_chromosome_alt_ids.tsv') if hg38 else resource_path('hg37_chromosome_alt_ids.tsv')
         self.hg38 = hg38 
         self.gene_type = gene_type.lower()
-        if gene_type.lower() not in allele_db_mapping_path:
-            log.warn(f"Gene type {gene_type} does not yet have allele database implemented in immunotyper")
+        _ = get_allele_db_mapping_path(gene_type.lower()) # Check if allele db implemented - raises exception if not
         self.regions_path = regions_resource_path(f"{gene_type.upper()}-{'hg38' if hg38 else 'hg37'}_extract_regions.bed")
         log.debug(f"Using regions file: {self.regions_path}")
         

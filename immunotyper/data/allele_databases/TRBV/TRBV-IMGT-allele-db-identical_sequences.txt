@@ -1,0 +1,9 @@
+Found duplicate sequence:
+  Existing: IMGT000021|TRBV24-1*02|Homo_sapiens|F|V-REGION|425581..425868|288 nt|1| | | | |288+0=288| | |
+  Current:  L05153|TRBV24/OR9-2*01|Homo_sapiens|ORF|V-REGION|1..288|288 nt|1| | | | |288+0=288| | |
+  Keeping: L05153|TRBV24/OR9-2*01|Homo_sapiens|ORF|V-REGION|1..288|288 nt|1| | | | |288+0=288| | | (higher priority)
+Found duplicate sequence:
+  Existing: X61445|TRBV6-2*01|Homo_sapiens|F|V-REGION|412..698|287 nt|1| | | | |287+0=287| | |
+  Current:  U07978|TRBV6-3*01|Homo_sapiens|F|V-REGION|29129..29415|287 nt|1| | | | |287+0=287| | |
+  Keeping: X61445|TRBV6-2*01|Homo_sapiens|F|V-REGION|412..698|287 nt|1| | | | |287+0=287| | | (first occurrence or equal/higher priority)
+Saving output to TRBV-IMGT-allele-db-no_duplicates.fa
