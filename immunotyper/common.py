@@ -56,7 +56,7 @@ def get_database_config(gene_type):
 
     # Add ignored_alleles_path for IGHV specifically
     if gene_type.lower() == 'ighv':
-        base_config['ignored_alleles_path'] = db_resource_path('IGHV-ignored_alleles.txt')
+        base_config['ignored_alleles_path'] = db_resource_path('IGHV/IGHV-ignored_alleles.txt')
 
     return base_config
 
