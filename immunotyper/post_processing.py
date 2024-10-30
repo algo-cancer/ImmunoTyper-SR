@@ -347,7 +347,44 @@ class PostProcessor(object):
                 for v in var:
                     f.write(v+'\n')
             
-
+    def write_read_assignments(self, output_dir: str) -> None:
+        """
+        Writes read assignments to fasta and BAM files in the specified output directory.
+        Creates one fasta file and one BAM file per allele containing all reads assigned to that allele.
+        
+        Args:
+            output_dir (str): Path to output directory where files will be written
+        """
+        # Create output directory if it doesn't exist
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Write files for each allele's assigned reads
+        for allele, reads in self.read_assignment.items():
+            # Replace problematic characters in allele name for filename
+            safe_allele = allele.replace('/', '-OR')
+            fasta_path = os.path.join(output_dir, f"{safe_allele}.fa")
+            bam_path = os.path.join(output_dir, f"{safe_allele}.bam")
+            
+            # Write fasta file
+            with open(fasta_path, 'w') as f:
+                for read in reads:
+                    f.write(f">{read.id}\n{read.seq}\n")
+            
+            # Create BAM file with custom header
+            header = {'HD': {'VN': '1.0'},
+                     'SQ': [{'SN': allele,
+                            'LN': len(self.allele_db[allele].seq)}]}
+            
+            # Write BAM file
+            with pysam.AlignmentFile(bam_path, 'wb', header=header) as outf:
+                for read in reads:
+                    if allele in read.mappings_dict:
+                        # Get the original alignment
+                        aln = read.mappings_dict[allele]
+                        # Update reference name to match new header
+                        aln.reference_id = 0  # Since we only have one reference in header
+                        outf.write(aln)
+            
 class PostProcessorModel(PostProcessor):
     '''Child of PostProcessor using lpinterface.ShortReadModelTotalErrorDiscardObj as input to get required data'''
 
@@ -373,10 +410,7 @@ class PostProcessorModel(PostProcessor):
                 raise ValueError(f'Read {r.id} assigned to > 1 allele: {str(assigned)}')
             r.assigned = assigned[0] if assigned else None
             if r.assigned:
-                try:
-                    read_assignment[r.assigned].append(r)
-                except KeyError:
-                    read_assignment[r.assigned] = [r]
+                read_assignment.setdefault(r.assigned, []).append(r)
         reads = dict([(r.id, r) for r in model.reads])
         
         calls = []
@@ -423,9 +457,9 @@ class PostProcessorOutput(PostProcessor):
             
             for r in SeqIO.parse(allele_reads_path, 'fasta'): # add read sequences
                 try:
-                    read_assignment[allele_id].append(r)
+                    read_assignment.setdefault(r.assigned, []).append(r)
                 except KeyError:
-                    read_assignment[allele_id] = [r]
+                    read_assignment[r.assigned] = [r]
                 reads[r.id] = r
         return reads, read_assignment
         

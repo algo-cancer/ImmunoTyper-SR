@@ -244,6 +244,11 @@ def run_immunotyper(bam_path: str,  ref: str='',
         output_vcf_dir=output_vcf_dir
     )
 
+    # Write read assignments
+    post_processor.write_read_assignments(
+        output_dir=os.path.join(output_dir, os.path.splitext(os.path.basename(bam_path))[0]+'-read_assignment')
+    )
+
 if __name__ == '__main__':
 	main() 
 
