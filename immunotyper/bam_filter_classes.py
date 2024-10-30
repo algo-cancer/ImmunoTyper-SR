@@ -6,6 +6,7 @@ from .common import Read, log, SeqRecord, fasta_from_seq, resource_path, get_all
 from statistics import mean, pvariance
 from .read_filter_classes import TtnMappingFilter
 import subprocess
+from Bio import SeqIO
 
 class BamFilter(ABC):
     ''' Base class to define interface for classes to recruit read pool from hume genome reference mapping
@@ -147,6 +148,14 @@ class BamFilter(ABC):
 
             self.print_read_count()
 
+    def delete_extracted_reads(self):
+        """Deletes the extracted reads FASTA file."""
+        try:
+            os.remove(self.output_path)
+            log.info(f"Deleted extracted reads file: {self.output_path}")
+        except OSError as e:
+            log.warn(f"Could not delete extracted reads file: {str(e)}")
+
     def recruit_reads(self, regions=None, unmapped=True):
         ''' Extracts reads mapping to self.regions_to_extract or regions
         '''
@@ -154,7 +163,7 @@ class BamFilter(ABC):
             if os.path.isfile(self.output_path) or os.path.islink(self.output_path):
                 log.warn(f'output_path {self.output_path} already exists... Not recruiting reads')
                 self.print_read_count()
-                return
+                return list(SeqIO.parse(self.output_path, 'fasta'))
         except sp.CalledProcessError: # file could not be read by `wc -l`
             log.error(f"Could not load reads from {self.output_path}, recruiting reads from BAM...")
 
@@ -174,6 +183,10 @@ class BamFilter(ABC):
             except KeyError as e2:
                 log.info(f"Contig {chrom} not present in alignment file")
         self.extract_reads(regions_str, unmapped)
+        
+        reads = list(SeqIO.parse(self.output_path, 'fasta'))
+            
+        return reads
 
     def find_chrom_id(self, chrom_id):
         '''Takes a chromosome id and finds the matching id that is used in self.bam using self.alt_ids

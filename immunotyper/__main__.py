@@ -120,6 +120,11 @@ parser.add_argument(
 parser.add_argument('--no_coverage_estimation', help='Disables empirical coverage',
     action='store_true')
 
+parser.add_argument(
+    '--save_extracted_reads',
+    action='store_true',
+    help='Save the extracted reads FASTA file instead of deleting it after use'
+)
 
 def main():
     args = parser.parse_args()    
@@ -138,7 +143,8 @@ def run_immunotyper(bam_path: str,  ref: str='',
                                     seq_error_rate: float=0.02,
                                     write_cache_path: str='',
                                     solver_time_limit: int=1,
-                                    threads: int=6):
+                                    threads: int=6,
+                                    save_extracted_reads: bool=False):
     """Driver method to run immunotyper and output calls
 
     Args:
@@ -163,14 +169,13 @@ def run_immunotyper(bam_path: str,  ref: str='',
 
     # Extract reads from BAM
     bam_filter = BamFilterImplemented(bam_path, gene_type, not hg37, reference_fasta_path=ref, output_path=output_dir)
-    bam_filter.recruit_reads()
+    reads = bam_filter.recruit_reads()
     m, variance, edge_variance = bam_filter.sample_coverage(large_depth_sample=True)
     READ_DEPTH = int(round(m/2))
     VARIANCE = variance/2
     EDGE_VARIANCE = [x/2 for x in edge_variance]
 
-    # get read lengths
-    reads = SeqIO.parse(bam_filter.output_path, 'fasta')
+    # sample read lengths
     lengths = []
     i = 0
     for r in reads:
@@ -189,6 +194,9 @@ def run_immunotyper(bam_path: str,  ref: str='',
                                    
     positive, negative = flanking_filter.filter_reads(bam_filter.output_path, mapping_params="-a --end-to-end --very-sensitive -f  --n-ceil C,100,0 --np 0 --ignore-quals --mp 2,2 --score-min C,-50,0 -L 10")
     for r in positive: r.allele_db = allele_db
+    
+    if not save_extracted_reads:
+        bam_filter.delete_extracted_reads()
     
     # Make allele candidates
     ### Instantiate model to get candidate class to use
@@ -238,3 +246,4 @@ def run_immunotyper(bam_path: str,  ref: str='',
 
 if __name__ == '__main__':
 	main() 
+
