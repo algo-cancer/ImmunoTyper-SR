@@ -1,7 +1,7 @@
 import argparse, os
 from posixpath import splitext
-from .allele_database import ImgtNovelAlleleDatabase
 from .common import log, initialize_logger, get_database_config, get_allele_db_mapping_path
+from .allele_database import ImgtNovelAlleleDatabase
 from .bam_filter_classes import BamFilterImplemented, IghHg38BamFilter
 from Bio import SeqIO
 from statistics import mean
@@ -128,7 +128,7 @@ parser.add_argument(
 
 def main():
     args = parser.parse_args()    
-    run_immunotyper(args.bam_path, args.ref, args.gene_type, args.hg37, args.solver, args.output_dir, args.landmark_groups, args.landmarks_per_group, args.max_copy, args.stdev_coeff, args.seq_error_rate, args.write_cache_path, args.solver_time_limit, args.threads)
+    run_immunotyper(args.bam_path, args.ref, args.gene_type, args.hg37, args.solver, args.output_dir, args.landmark_groups, args.landmarks_per_group, args.max_copy, args.stdev_coeff, args.seq_error_rate, args.write_cache_path, args.solver_time_limit, args.threads, args.save_extracted_reads)
 
 
 def run_immunotyper(bam_path: str,  ref: str='',
@@ -162,10 +162,10 @@ def run_immunotyper(bam_path: str,  ref: str='',
         solver_time_limit (int, optional): _description_. Defaults to 1.
         threads (int, optional): _description_. Defaults to 6.
     """
-    allele_db = ImgtNovelAlleleDatabase(**get_database_config(gene_type))
-
     output_prefix = os.path.splitext(os.path.basename(bam_path))[0]
     initialize_logger(os.path.join(output_dir, f'{output_prefix}-{gene_type}-immunotyper-debug'))
+
+    allele_db = ImgtNovelAlleleDatabase(**get_database_config(gene_type))
 
     # Extract reads from BAM
     bam_filter = BamFilterImplemented(bam_path, gene_type, not hg37, reference_fasta_path=ref, output_path=output_dir)
@@ -218,17 +218,17 @@ def run_immunotyper(bam_path: str,  ref: str='',
 
     # Write outputs
     output_dir = output_dir if output_dir else os.getcwd()
+    
+    # Write functional allele calls
     output_file = os.path.join(output_dir, os.path.splitext(os.path.basename(bam_path))[0]+f'-{gene_type.upper()}_functional_allele_calls.txt')
-    log.info(f"Writing allele calls to: {output_file}")
-    with open(output_file, 'w') as f:
-        for c in model.get_allele_calls(functional_only=True):
-            f.write(c+'\n')
+    log.info(f"Writing functional allele calls to: {output_file}")
+    model.write_allele_calls(output_file, functional_only=True)
+    
+    # Write all allele calls
     output_file = os.path.join(output_dir, os.path.splitext(os.path.basename(bam_path))[0]+f'-{gene_type.upper()}_allele_calls.txt')
-    log.info(f"Writing allele calls to: {output_file}")
-    with open(output_file, 'w') as f:
-        for c in model.get_allele_calls(functional_only=False):
-            f.write(c+'\n')
-
+    log.info(f"Writing all allele calls to: {output_file}")
+    model.write_allele_calls(output_file, functional_only=False)
+            
     # Call SNVs
     post_processor = PostProcessorModel(model, allele_db, sequencing_depth=READ_DEPTH)
 
@@ -245,8 +245,10 @@ def run_immunotyper(bam_path: str,  ref: str='',
     )
 
     # Write read assignments
+    output_dir = os.path.join(output_dir, os.path.splitext(os.path.basename(bam_path))[0]+'-read_assignment')
+    log.info(f'Writing read assignments to: {output_dir}')
     post_processor.write_read_assignments(
-        output_dir=os.path.join(output_dir, os.path.splitext(os.path.basename(bam_path))[0]+'-read_assignment')
+        output_dir=output_dir
     )
 
 if __name__ == '__main__':

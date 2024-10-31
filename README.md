@@ -89,10 +89,10 @@ After installing with pip, use the command immunotyper-SR. The only required inp
 
 - <prefix>-<gene_type>_functional_allele_calls.txt: List of functional alleles called.
 - <prefix>-<gene_type>_allele_calls.txt: Includes pseudogenes.
-- <prefix>-<gene_type>-extracted.fa: Reads extracted from the BAM used for analysis.
 - <prefix>-<gene_type>-immunotyper-debug.log: Log file.
 - <prefix>-<gene_type>-novel-variants.tsv: Novel variants called using FreeBayes and WhatsHap. Format: `gene position ref alt`.
-- <prefix>-<gene_type>-novel_variant_vcfs/<gene_id>_variants.vcf: Phased VCFs variants. NOTE these include all variants called relative to wildtype, so include any variants from non-wildtype called alleles as well as any present novel alleles. 
+- <prefix>-<gene_type>-novel_variant_vcfs/<gene_id>_variants.vcf: Phased VCFs variants. NOTE these include all variants called relative to wildtype, so include any variants from non-wildtype called alleles as well as any present novel alleles.
+- <prefix>-<gene_type>-read_assignment: Contains FASTA and BAM files of reads assigned to each called allele.
 
 IMPORTANT: If your BAM was mapped to GRCh37 use the `--hg37` flag. 
 

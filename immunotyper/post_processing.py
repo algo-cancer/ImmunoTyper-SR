@@ -3,28 +3,18 @@ from tempfile import TemporaryFile, TemporaryDirectory
 from typing import Tuple, List
 from venv import create
 from .common import create_temp_file as ctf
-from .common import fasta_from_seq, suppress_stdout, Read, log
+from .common import fasta_from_seq, suppress_stdout, Read, log, run_command
 from .mapper_wrappers import BowtieWrapper
 from statistics import mean
 from Bio import SeqIO
 from glob import glob
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import subprocess
 import shutil
+import re
 
 def create_temp_file(*args, **kwargs):
     kwargs['delete'] = False
     return ctf(*args, **kwargs)
-
-def run_command(command: str, check: bool = True) -> None:
-    log.debug(f'Running {command}')
-    try:
-        # Run the command using subprocess.run()
-        result = subprocess.run(command, shell=True, check=check, stderr=subprocess.PIPE, text=True)
-    except subprocess.CalledProcessError as e:
-        # If the command fails and check is True, raise an exception with stderr
-        stderr_output = e.stderr.strip()
-        raise RuntimeError(f"Command '{command}' failed with error: {str(e)}\nStderr: {stderr_output}")
 
 class PostProcessor(object):
 
@@ -360,7 +350,7 @@ class PostProcessor(object):
         
         # Write files for each allele's assigned reads
         for allele, reads in self.read_assignment.items():
-            # Replace problematic characters in allele name for filename
+            # Sanitize allele name for valid filenames
             safe_allele = allele.replace('/', '-OR')
             fasta_path = os.path.join(output_dir, f"{safe_allele}.fa")
             bam_path = os.path.join(output_dir, f"{safe_allele}.bam")

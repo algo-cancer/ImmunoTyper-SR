@@ -1,6 +1,6 @@
 from os.path import exists
 import os, abc, pysam
-from .common import log, fasta_from_seq, create_temp_file
+from .common import log, fasta_from_seq, create_temp_file, run_command
 
 class MappingWrapper():
     """ Abstract classe for mapping tool wrappers.
@@ -91,12 +91,12 @@ class MappingWrapper():
         else:
             output_file = None
 
-        # run commmand
+        # run command
         command = self.build_command(src, params, query_path, target_path, output_path, *args, **kwargs)
 
         log.debug('Running {}:\n{}'.format(self.src, command))
         print('Running {}:\n{}'.format(self.src, command))
-        os.system(command)
+        run_command(command, quiet=True)
 
         if query_file:
             query_file.close()
@@ -124,7 +124,7 @@ class BwaWrapper(MappingWrapper):
             return ' '.join([src, 'mem', params, target_path, query_path, '|', 'samtools', 'view', '-b', '|', 'samtools', 'sort', '-', '>', output_path])
 
     def index_reference(self, reference_path):
-        os.system(f"bwa index {reference_path}")
+        run_command(f"bwa index {reference_path}", quiet=True)
 
 class BowtieWrapper(MappingWrapper):
     src = 'bowtie2'
@@ -136,7 +136,7 @@ class BowtieWrapper(MappingWrapper):
         else:
             return ' '.join([src, params, '-x', target_path, '-U', query_path, '|', 'samtools', 'view', '-b', '|', 'samtools', 'sort', '-', '>', output_path])
     def index_reference(self, reference_path):
-        os.system(f"bowtie2-build {reference_path} {reference_path}")
+        run_command(f"bowtie2-build {reference_path} {reference_path}", quiet=True)
 
 class MrsFast(MappingWrapper):
     src = 'mrsfast'

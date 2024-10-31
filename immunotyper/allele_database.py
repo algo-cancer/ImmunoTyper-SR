@@ -86,6 +86,17 @@ class AlleleDatabase(ABC, Iterator):
 
         # set path for allele_distances
         self.allele_distances_path = allele_distances_path if allele_distances_path else os.path.splitext(db_fasta_path)[0].replace('aligned','allele_distance') + '.pickle'
+        # Initialize identical alleles dict
+        self.identical_alleles = defaultdict(set)
+        
+        # Determine identical sequences file path based on db_fasta_path
+        identical_seq_file = db_fasta_path.replace('-aligned.fasta', '-identical_sequences.txt')
+        if os.path.exists(identical_seq_file):
+            log.info(f'Loading duplicate alleles from {identical_seq_file}')
+            self._load_identical_sequences(identical_seq_file)
+        else:
+            log.warn(f'Duplicate sequences file not found at {identical_seq_file}')
+
 
     #
     # Properties
@@ -196,6 +207,48 @@ class AlleleDatabase(ABC, Iterator):
             if x.allele_is_similar(y, is_similar=is_similar, variant_filter=variant_filter):
                 x.similar_alleles.append(y)
                 y.similar_alleles.append(x)
+
+    def _load_identical_sequences(self, file_path: str) -> None:
+        """Load identical sequence information from IMGT duplicate file
+
+        Args:
+            file_path (str): Path to *-identical_sequences.txt file
+        """
+        current_primary = None
+        found_duplicates = False
+        
+        with open(file_path) as f:
+            for line in f:
+                if line.startswith('Found duplicate sequence:'):
+                    found_duplicates = True
+                    current_primary = None
+                    continue
+                    
+                if line.strip().startswith('Existing:') or line.strip().startswith('Current:'):
+                    allele_id = line.split('|')[1].strip()
+                    
+                    if line.strip().startswith('Existing:'):
+                        current_primary = allele_id
+                    elif current_primary and line.strip().startswith('Current:'):
+                        self.identical_alleles[current_primary].add(allele_id)
+                        self.identical_alleles[allele_id].add(allele_id)
+        
+        if not found_duplicates:
+            log.warn(f'No duplicate sequences found in {file_path}')
+
+    def get_identical_alleles(self, allele_id: str) -> list:
+        """Get list of alleles identical to the given allele
+
+        Args:
+            allele_id (str): Allele identifier
+
+        Returns:
+            list: List of identical allele IDs, empty if none found
+        """
+        # Check if this allele is a primary key
+        if allele_id in self.identical_alleles:
+            return sorted(list(self.identical_alleles[allele_id]))                
+        return []
 
     def keys(self):
         '''For backwards compatibility with old dictionary allele databases'''
