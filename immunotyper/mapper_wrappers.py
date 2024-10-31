@@ -95,7 +95,6 @@ class MappingWrapper():
         command = self.build_command(src, params, query_path, target_path, output_path, *args, **kwargs)
 
         log.debug('Running {}:\n{}'.format(self.src, command))
-        print('Running {}:\n{}'.format(self.src, command))
         run_command(command, quiet=True)
 
         if query_file:

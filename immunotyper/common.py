@@ -79,7 +79,6 @@ def get_allele_db_mapping_path(gene_type):
 
     return db_resource_path(f'{gene_type.upper()}/{gene_type.upper()}-IMGT-allele-db-no_duplicates+Ns.fa')
 
-# ... existing code ...
 
 def header(string):
     return '\n\n' + '-'*len(string) + string + '-'*len(string) + '\n\n'
@@ -100,7 +99,11 @@ def initialize_logger(debug_log_path='immunotyper-debug'):
     Args:
         debug_log_path: Path for debug log file. If None, only console logging is enabled.
     """
-    LOG_FORMAT = '{record.message}'
+    # Simple format for console output
+    CONSOLE_FORMAT = '{record.message}'
+    
+    # Detailed format for debug file
+    DEBUG_FORMAT = '[{record.time:%Y-%m-%d %H:%M:%S.%f}] {record.level_name}: {record.channel}: {record.filename}:{record.lineno} - {record.message}'
     
     # Create new handler setup
     handlers = [logbook.NullHandler()]
@@ -111,12 +114,12 @@ def initialize_logger(debug_log_path='immunotyper-debug'):
             os.remove(debug_log_path)
             
         handlers.extend([
-            logbook.FileHandler(debug_log_path, level='DEBUG', format_string=LOG_FORMAT),
-            logbook.more.ColorizedStderrHandler(format_string=LOG_FORMAT, level='INFO', bubble=True)
+            logbook.FileHandler(debug_log_path, level='DEBUG', format_string=DEBUG_FORMAT),
+            logbook.more.ColorizedStderrHandler(format_string=CONSOLE_FORMAT, level='INFO', bubble=True)
         ])
     else:
         handlers.append(
-            logbook.more.ColorizedStderrHandler(format_string=LOG_FORMAT, level='INFO', bubble=True)
+            logbook.more.ColorizedStderrHandler(format_string=CONSOLE_FORMAT, level='INFO', bubble=True)
         )
 
     # Setup and push the new handler configuration

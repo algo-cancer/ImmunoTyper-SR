@@ -164,16 +164,20 @@ def run_immunotyper(bam_path: str,  ref: str='',
     """
     output_prefix = os.path.splitext(os.path.basename(bam_path))[0]
     initialize_logger(os.path.join(output_dir, f'{output_prefix}-{gene_type}-immunotyper-debug'))
+    log.info(f"Starting ImmunoTyper-SR analysis for {gene_type.upper()} genes on {bam_path}")
 
+    log.info("Initializing allele database")
     allele_db = ImgtNovelAlleleDatabase(**get_database_config(gene_type))
 
     # Extract reads from BAM
+    log.info("Extracting reads from BAM file")
     bam_filter = BamFilterImplemented(bam_path, gene_type, not hg37, reference_fasta_path=ref, output_path=output_dir)
     reads = bam_filter.recruit_reads()
     m, variance, edge_variance = bam_filter.sample_coverage(large_depth_sample=True)
     READ_DEPTH = int(round(m/2))
     VARIANCE = variance/2
     EDGE_VARIANCE = [x/2 for x in edge_variance]
+    log.info(f"Estimated single copy read depth: {READ_DEPTH}")
 
     # sample read lengths
     lengths = []
@@ -188,11 +192,13 @@ def run_immunotyper(bam_path: str,  ref: str='',
     allele_db.make_landmarks(landmark_groups*landmarks_per_group, READ_LENGTH, READ_DEPTH, VARIANCE, EDGE_VARIANCE, 50, landmark_groups)
 
     # Make read mappings to allele database and filter
+    log.info("Filtering reads and mapping to allele database")
     flanking_filter = BowtieFlankingFilter(reference_path=get_allele_db_mapping_path(gene_type),
                                     write_cache_path = write_cache_path if write_cache_path else None,
                                     load_cache_path = write_cache_path if write_cache_path else None)
                                    
     positive, negative = flanking_filter.filter_reads(bam_filter.output_path, mapping_params="-a --end-to-end --very-sensitive -f  --n-ceil C,100,0 --np 0 --ignore-quals --mp 2,2 --score-min C,-50,0 -L 10")
+    log.info(f"Found {len(positive)} candidate {gene_type.upper()} reads for analysis")
     for r in positive: r.allele_db = allele_db
     
     if not save_extracted_reads:
@@ -200,12 +206,14 @@ def run_immunotyper(bam_path: str,  ref: str='',
     
     # Make allele candidates
     ### Instantiate model to get candidate class to use
+    log.info("Building allele candidates")
     candidate_builder = BwaMappingsCandidateBuilder(read_length=READ_LENGTH,
                                                                 allele_db=allele_db)
     candidates = candidate_builder.make_candidates(positive)
-
+    log.info(f"Generated {len(candidates)} candidate alleles")
 
     # Build and run model
+    log.info("Building and solving optimization model")
     model = implemented_models['ilp'](implemented_solvers[solver], num_landmarks=landmark_groups*landmarks_per_group,
                                             num_landmark_groups=landmark_groups,
                         stdev_coefficient=stdev_coeff, 

@@ -122,7 +122,7 @@ class ShortReadModelTotalErrorDiscardObj(ModelMeta):
         self.depth_errors = {}
         self._candidates = candidates
 
-        log.info(f'Building model for {len(reads)} reads and {len(candidates)} candidates')
+        log.debug(f'Building model for {len(reads)} reads and {len(candidates)} candidates')
 
         num_candidates_processed = 0
         for allele_candidate in candidates:
@@ -245,7 +245,7 @@ class ShortReadModelTotalErrorDiscardObjAlleleClusters(ShortReadModelTotalErrorD
         self.depth_errors = {}
         self._candidates = candidates
 
-        log.info(f'Building model for {len(reads)} reads and {len(candidates)} candidates')
+        log.debug(f'Building model for {len(reads)} reads and {len(candidates)} candidates')
 
         num_candidates_processed = 0
         for allele_candidate in candidates:

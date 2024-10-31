@@ -42,9 +42,9 @@ class MappingFilter(Filter):
             self.reads = dict([(r.id, r) for r in reads])
             input_reads = self.reads.values()
         if self.reads:
-            log.info(f'Filtering {len(self.reads)} reads')
+            log.debug(f'Filtering {len(self.reads)} reads')
         self.positive, self.negative = self.filter(self.map(input_reads))
-        log.info(f'Of {len(self.reads)}, {len(self.positive)} passed and {len(self.negative)} failed filter')
+        log.debug(f'Of {len(self.reads)}, {len(self.positive)} passed and {len(self.negative)} failed filter')
 
         return self.positive, self.negative
 
@@ -56,10 +56,10 @@ class MappingFilter(Filter):
         mapping_results = None
         if self.load_cache_path:
             try:
-                log.info('Trying to load mapping results cache from {}'.format(self.load_cache_path))
+                log.debug('Trying to load mapping results cache from {}'.format(self.load_cache_path))
                 mapping_results = self.mapper.sam_parser(self.load_cache_path)
             except (ValueError, IOError):
-                log.info('Loading failed!')
+                log.debug('Loading failed!')
 
         if not mapping_results:
             if self.write_cache_path:
@@ -159,8 +159,8 @@ class FlankingFilter(MappingFilter):
     def __init__(self, mapper, mapping_params=None, reference_path=None, write_cache_path=None, load_cache_path=None, minimum_coding_bases=50, secondary_filter=True):
         self.perform_secondary_filter = secondary_filter
         self.minimum_coding_bases = minimum_coding_bases
-        log.info('Using {} as minimum number of coding base threshold for mapping filter'.format(self.minimum_coding_bases))
-        log.info('Allowing clipped mappings to start within {} bases of a reference start or end'.format(self.read_end_tolerance))
+        log.debug('Using {} as minimum number of coding base threshold for mapping filter'.format(self.minimum_coding_bases))
+        log.debug('Allowing clipped mappings to start within {} bases of a reference start or end'.format(self.read_end_tolerance))
         self.secondary_filter_reads = dict()
         self.secondary_filter_mappings = defaultdict(dict)
         super(FlankingFilter, self).__init__(mapper, mapping_params, reference_path, write_cache_path, load_cache_path)
@@ -195,7 +195,7 @@ class FlankingFilter(MappingFilter):
         
         if self.secondary_filter_reads and self.perform_secondary_filter:
             secondary_positive = self.secondary_clipping_filter(self.secondary_filter_reads)
-            log.info(f'Of {len(self.secondary_filter_reads)}, {len(secondary_positive)} passed secondary filter')
+            log.debug(f'Of {len(self.secondary_filter_reads)}, {len(secondary_positive)} passed secondary filter')
             positive.update(secondary_positive)
             negative = negative - secondary_positive
         

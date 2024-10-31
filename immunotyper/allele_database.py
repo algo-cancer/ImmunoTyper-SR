@@ -37,7 +37,7 @@ class AlleleDatabase(ABC, Iterator):
         # load consensus
         if consensus_path:
             if os.path.exists(consensus_path):
-                log.info(f'Using consensus from {consensus_path}')
+                log.debug(f'Using consensus from {consensus_path}')
                 consensus = list(SeqIO.parse(consensus_path, 'fasta'))
                 if len(consensus) > 1:
                     raise ValueError(f'Consensus fasta {consensus_path} has > 1 sequence')
@@ -61,7 +61,7 @@ class AlleleDatabase(ABC, Iterator):
         # load ignored alleles
         if ignored_alleles_path:
             if os.path.exists(ignored_alleles_path):
-                log.info(f'Using ignored alleles from {ignored_alleles_path}')
+                log.debug(f'Using ignored alleles from {ignored_alleles_path}')
                 with open(ignored_alleles_path, 'r') as f:
                     self.ignored = set([x.strip() for x in f.readlines()])
             else:
@@ -92,7 +92,7 @@ class AlleleDatabase(ABC, Iterator):
         # Determine identical sequences file path based on db_fasta_path
         identical_seq_file = db_fasta_path.replace('-aligned.fasta', '-identical_sequences.txt')
         if os.path.exists(identical_seq_file):
-            log.info(f'Loading duplicate alleles from {identical_seq_file}')
+            log.debug(f'Loading duplicate alleles from {identical_seq_file}')
             self._load_identical_sequences(identical_seq_file)
         else:
             log.warn(f'Duplicate sequences file not found at {identical_seq_file}')
@@ -189,11 +189,11 @@ class AlleleDatabase(ABC, Iterator):
     def build_similar_alleles(self, is_similar=None, variant_filter=None):
         '''Iterates through all pairs of alleles, assigning allele.similar_alleles ([]) using AlleleReference.allele_is_similar'''
         if not variant_filter:
-            log.info('Building close alleles by only considering SNPs')
+            log.debug('Building close alleles by only considering SNPs')
             variant_filter = lambda x: [(pos, var_type) for pos, var_type in x if 'SNP' in var_type]
         if not is_similar:
             threshold = 3
-            log.info(f'Allowing at most {threshold} variants for allele pair to be consider as close')
+            log.debug(f'Allowing at most {threshold} variants for allele pair to be consider as close')
             is_similar = lambda x: True if len(x) <= threshold else False
 
         for a in self.alleles:
@@ -203,7 +203,7 @@ class AlleleDatabase(ABC, Iterator):
         tenth = round(num_comb/10.0)
         for i, (x, y) in enumerate(combinations(self.alleles, 2)):
             if i % 10000 == 0:
-                log.info(f'Proccessed {round(float(i+1)/num_comb*100)}%')
+                log.debug(f'Proccessed {round(float(i+1)/num_comb*100)}%')
             if x.allele_is_similar(y, is_similar=is_similar, variant_filter=variant_filter):
                 x.similar_alleles.append(y)
                 y.similar_alleles.append(x)
@@ -269,7 +269,7 @@ class AlleleDatabase(ABC, Iterator):
             sampled_variance                Single copy sampled variance
             sampled_depth                  Single copy sampled sequencing depth
             sampled_edge_variance          Sample from TTN using bam_filter_classes    [mean pos 1 sampled variance,..., mean pos minimum_coding_bases sampled variance]'''
-        log.info(f"Making allele landmark positions (n={num_landmarks}, groups={num_landmark_groups})")
+        log.debug(f"Making allele landmark positions (n={num_landmarks}, groups={num_landmark_groups})")
         
         self.num_landmarks = num_landmarks
         self.num_landmark_groups = num_landmark_groups
@@ -602,9 +602,9 @@ Functional: {self.functional}'''
     def set_variants(self, consensus_seq):
         '''Driver to use get_variants, remove_periods'''
         try:
-            self.variants = self.get_variants(self.seq.replace(self.gap_delimiter, '.'), consensus_seq.replace(self.gap_delimiter, '.'))
-        except ValueError:
-            raise ValueError(f'Errors while building variants for {self.id} (see debug log)')
+            self.variants = self.get_variants(self.aligned_seq.replace(self.gap_delimiter, '.'), consensus_seq.replace(self.gap_delimiter, '.'))
+        except (ValueError, IndexError):
+            log.debug(f'Errors while building variants for {self.id} (see debug log)')
 
     def mismatches(self, other_allele):
         '''Provided an instance of AlelleReference returns (number of mismatches, string where ' ' is match, '*' is mismatch)'''
@@ -641,7 +641,7 @@ Functional: {self.functional}'''
 
             except IndexError as e:
                 log.debug("Allele seq is shorter than consensus, not adding 3' deletion")
-                break
+                raise
 
             if same_value:
                 continue
