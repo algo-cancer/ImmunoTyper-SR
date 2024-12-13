@@ -173,6 +173,7 @@ class PostProcessor(object):
                 called_alleles = [a for a in self.functional_calls if self.allele_db[a].gene in called]
                 self._filter_variants_for_alleles(mapping_target, called_alleles)
 
+    
     def _filter_variants_for_alleles(self, mapping_target: str, called_alleles: List[str]):
         """Helper function to filter variants for a set of alleles against a mapping target."""
         if mapping_target not in self.vcf_variants:
@@ -374,6 +375,7 @@ class PostProcessor(object):
                         # Update reference name to match new header
                         aln.reference_id = 0  # Since we only have one reference in header
                         outf.write(aln)
+
             
 class PostProcessorModel(PostProcessor):
     '''Child of PostProcessor using lpinterface.ShortReadModelTotalErrorDiscardObj as input to get required data'''
