@@ -35,7 +35,9 @@ pip install <binary.whl>
 For the best experience, we recommend setting up a clean environment first:
 
 ```
-conda create -n immunotyper-SR -c bioconda python=3.8 bwa samtools
+conda create -n immunotyper-SR -c bioconda python=3.8 bwa bowtie2 freebayes whatshap
+conda install -y -n immunotyper-SR -c gurobi gurobi
+conda install -y -n immunotyper-SR -c conda-forge samtools
 conda activate immunotyper-SR
 pip install <binary.whl>
 ```
@@ -70,7 +72,9 @@ If the binary fails to install, you can build the tool from source:
 
 
 ```
-conda create -n immunotyper-SR -c bioconda python=3.8 bwa samtools
+conda create -n immunotyper-SR -c bioconda python=3.8 bwa bowtie2 freebayes whatshap
+conda install -y -n immunotyper-SR -c gurobi gurobi
+conda install -y -n immunotyper-SR -c conda-forge samtools
 conda activate immunotyper-SR
 git clone git@github.com:algo-cancer/ImmunoTyper-SR.git ./ImmunoTyper-SR
 cd ImmunoTyper-SR
@@ -85,10 +89,10 @@ After installing with pip, use the command immunotyper-SR. The only required inp
 
 - <prefix>-<gene_type>_functional_allele_calls.txt: List of functional alleles called.
 - <prefix>-<gene_type>_allele_calls.txt: Includes pseudogenes.
-- <prefix>-<gene_type>-extracted.fa: Reads extracted from the BAM used for analysis.
 - <prefix>-<gene_type>-immunotyper-debug.log: Log file.
 - <prefix>-<gene_type>-novel-variants.tsv: Novel variants called using FreeBayes and WhatsHap. Format: `gene position ref alt`.
-- <prefix>-<gene_type>-novel_variant_vcfs/<gene_id>_variants.vcf: Phased VCFs variants. NOTE these include all variants called relative to wildtype, so include any variants from non-wildtype called alleles as well as any present novel alleles. 
+- <prefix>-<gene_type>-novel_variant_vcfs/<gene_id>_variants.vcf: Phased VCFs variants. NOTE these include all variants called relative to wildtype, so include any variants from non-wildtype called alleles as well as any present novel alleles.
+- <prefix>-<gene_type>-read_assignment: Contains FASTA and BAM files of reads assigned to each called allele.
 
 IMPORTANT: If your BAM was mapped to GRCh37 use the `--hg37` flag. 
 

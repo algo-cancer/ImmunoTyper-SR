@@ -63,6 +63,23 @@ class ModelMeta(metaclass=ABCMeta):
 
         return called if not no_cnv else list(set(called))
 
+    def write_allele_calls(self, output_path: str, functional_only=False) -> None:
+        """Writes allele calls to file, with identical alleles tab-separated on same line
+
+        Args:
+            output_path (str): Path to output file
+            functional_only (bool, optional): If true, only output functional alleles. Defaults to False.
+        """
+        called_alleles = self.get_allele_calls(functional_only=functional_only)
+        
+        with open(output_path, 'w') as f:
+            for allele in sorted(called_alleles):
+                line_alleles = [allele]
+                if hasattr(self, 'allele_db'):
+                    identical_alleles = self.allele_db.get_identical_alleles(allele)
+                    if identical_alleles:
+                        line_alleles.extend(identical_alleles)
+                f.write('\t'.join(line_alleles) + '\n')
 
 class ShortReadModelTotalErrorDiscardObj(ModelMeta):
 
@@ -105,7 +122,7 @@ class ShortReadModelTotalErrorDiscardObj(ModelMeta):
         self.depth_errors = {}
         self._candidates = candidates
 
-        log.info(f'Building model for {len(reads)} reads and {len(candidates)} candidates')
+        log.debug(f'Building model for {len(reads)} reads and {len(candidates)} candidates')
 
         num_candidates_processed = 0
         for allele_candidate in candidates:
@@ -228,7 +245,7 @@ class ShortReadModelTotalErrorDiscardObjAlleleClusters(ShortReadModelTotalErrorD
         self.depth_errors = {}
         self._candidates = candidates
 
-        log.info(f'Building model for {len(reads)} reads and {len(candidates)} candidates')
+        log.debug(f'Building model for {len(reads)} reads and {len(candidates)} candidates')
 
         num_candidates_processed = 0
         for allele_candidate in candidates:

@@ -1,5 +1,7 @@
 FROM continuumio/miniconda3
 
+ARG CACHEBUST=1
+
 # Set the working directory in the container
 WORKDIR /app
 

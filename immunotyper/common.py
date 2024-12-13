@@ -6,6 +6,7 @@ import pkg_resources
 import logbook, logbook.more
 import tempfile
 from Bio.Seq import Seq
+import subprocess
 
 DATA_DIR = 'immunotyper.data'
 def resource_path(key, data_dir_path=DATA_DIR):
@@ -56,7 +57,7 @@ def get_database_config(gene_type):
 
     # Add ignored_alleles_path for IGHV specifically
     if gene_type.lower() == 'ighv':
-        base_config['ignored_alleles_path'] = db_resource_path('IGHV-ignored_alleles.txt')
+        base_config['ignored_alleles_path'] = db_resource_path('IGHV/IGHV-ignored_alleles.txt')
 
     return base_config
 
@@ -78,7 +79,6 @@ def get_allele_db_mapping_path(gene_type):
 
     return db_resource_path(f'{gene_type.upper()}/{gene_type.upper()}-IMGT-allele-db-no_duplicates+Ns.fa')
 
-# ... existing code ...
 
 def header(string):
     return '\n\n' + '-'*len(string) + string + '-'*len(string) + '\n\n'
@@ -86,24 +86,45 @@ def header(string):
 def colorize(text, color='green'):
     return logbook._termcolors.colorize(color, text)
 
-log = logbook.Logger('Cypiripi')
-# log.level = logbook.DEBUG
+# Create the logger but don't set handlers yet
+log = logbook.Logger('ImmunoTyper')
+
+# Add a basic NullHandler to start
+basic_handler = logbook.NullHandler()
+basic_handler.push_application()
 
 def initialize_logger(debug_log_path='immunotyper-debug'):
-    LOG_FORMAT = '{record.message}'
+    """Initialize the logger with appropriate handlers.
+    
+    Args:
+        debug_log_path: Path for debug log file. If None, only console logging is enabled.
+    """
+    # Simple format for console output
+    CONSOLE_FORMAT = '{record.message}'
+    
+    # Detailed format for debug file
+    DEBUG_FORMAT = '[{record.time:%Y-%m-%d %H:%M:%S.%f}] {record.level_name}: {record.channel}: {record.filename}:{record.lineno} - {record.message}'
+    
+    # Create new handler setup
+    handlers = [logbook.NullHandler()]
+    
     if debug_log_path:
-        debug_log_path = debug_log_path+'.log'
+        debug_log_path = debug_log_path + '.log'
         if os.path.exists(debug_log_path):
             os.remove(debug_log_path)
-        
-        handler = logbook.NestedSetup([logbook.NullHandler(),
-                                    logbook.FileHandler(debug_log_path, level='DEBUG', format_string=LOG_FORMAT),
-                                    logbook.more.ColorizedStderrHandler(format_string=LOG_FORMAT, level='INFO', bubble=True)])
+            
+        handlers.extend([
+            logbook.FileHandler(debug_log_path, level='DEBUG', format_string=DEBUG_FORMAT),
+            logbook.more.ColorizedStderrHandler(format_string=CONSOLE_FORMAT, level='INFO', bubble=True)
+        ])
     else:
-        handler = logbook.NestedSetup([logbook.NullHandler(),
-                                    logbook.more.ColorizedStderrHandler(format_string=LOG_FORMAT, level='INFO', bubble=True)])
+        handlers.append(
+            logbook.more.ColorizedStderrHandler(format_string=CONSOLE_FORMAT, level='INFO', bubble=True)
+        )
 
-    handler.push_application()
+    # Setup and push the new handler configuration
+    handler_setup = logbook.NestedSetup(handlers)
+    handler_setup.push_application()
 
 
 
@@ -376,30 +397,32 @@ def suppress_stdout():
         finally:
             sys.stdout = old_stdout
 
-# import subprocess
-# import shlex
-# def run_command(command_string: str, check: bool=True, log_stout: bool=False, log_stderr: bool=False, dont_split: bool=False, *args, **kwargs):
-#         '''Wrapper for subprocess.run
-#         Args
-#             command_string
-#             check                       run check arg value
-#             log_stout, log_sterr        writes stout, sterr to log.ino if True respectively
-#             *args, **kwargs             Additional args for run
-#         Raises subprocess.CalledProcessError, writes stdout, sterr to log.error if check=True and non-zero
-#             exit status returned '''
-#         try:
-#             command_string = shlex.split(command_string) if not dont_split else command_string
-#             result = subprocess.run(command_string, check=check, capture_output=True, *args, **kwargs)
-#         except subprocess.CalledProcessError as e:
-#             log.error(f"Command {command_string} returned non-zero exit status:\n{e.stdout.decode('UTF-8')}\n{e.stderr.decode('UTF-8')}")
-#             raise e
+def run_command(command: str, check: bool = True, quiet: bool = False) -> None:
+    """
+    Run a shell command with optional output suppression.
+    
+    Args:
+        command: The shell command to execute
+        check: If True, raises RuntimeError on command failure
+        quiet: If True, suppresses stdout and stderr during normal execution
+    
+    Raises:
+        RuntimeError: If the command fails and check is True
+    """
+    log.debug(f'Running {command}')
+    try:
+        # Configure stdout/stderr handling
+        stdout = subprocess.DEVNULL if quiet else None
+        stderr = subprocess.PIPE
         
-#         if log_stout: log.info(result.stdout)
-#         if log_stderr: log.info(result.stderr)
-
-def run_command(command_string: str, *args, **kwargs):
-    os.system(command_string)
-
-
-
-
+        # Run the command using subprocess.run()
+        result = subprocess.run(command, 
+                              shell=True, 
+                              check=check, 
+                              stdout=stdout,
+                              stderr=stderr,
+                              text=True)
+    except subprocess.CalledProcessError as e:
+        # If the command fails and check is True, raise an exception with stderr
+        stderr_output = e.stderr.strip()
+        raise RuntimeError(f"Command '{command}' failed with error: {str(e)}\nStderr: {stderr_output}")

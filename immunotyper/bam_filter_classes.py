@@ -6,6 +6,7 @@ from .common import Read, log, SeqRecord, fasta_from_seq, resource_path, get_all
 from statistics import mean, pvariance
 from .read_filter_classes import TtnMappingFilter
 import subprocess
+from Bio import SeqIO
 
 class BamFilter(ABC):
     ''' Base class to define interface for classes to recruit read pool from hume genome reference mapping
@@ -25,7 +26,7 @@ class BamFilter(ABC):
             bam_file_path (str):                path to bam file
             file_type (str):                    Optional: define mapping file type
             primary_mapping_only (bool)         Optional: if True, only extracts reads with primary mapping to extraction regions'''
-        log.info(f"Loading reads from {bam_file_path}...")
+        log.debug(f"Loading reads from {bam_file_path}...")
         self.bam_file_path = bam_file_path
         if primary_mapping_only:
             self.primary_mapping_only = primary_mapping_only
@@ -95,7 +96,7 @@ class BamFilter(ABC):
         ''' prints the number of reads recruited
         '''
         total_read_count = int(int(sp.check_output(['wc', '-l', self.output_path]).split()[0])/2)
-        log.info(f"Recruited {total_read_count - self.recruited_reads_counter} reads")
+        log.debug(f"Recruited {total_read_count - self.recruited_reads_counter} reads")
         self.recruited_reads_counter = total_read_count
     
     def extract_reads(self, regions_str='', unmapped=True):
@@ -103,7 +104,7 @@ class BamFilter(ABC):
         Args:
             regions_str     concatenated string of regions in the format chrM:start-end
         '''
-        log.info(f'Extracting mapped alignments from {regions_str}:\n')
+        log.debug(f'Extracting mapped alignments from {regions_str}:\n')
         with open(self.output_path, 'w') as f_out:
             if self.file_type == 'rc':
                 _env = {'REF_PATH': self.reference_fasta_path}
@@ -112,15 +113,15 @@ class BamFilter(ABC):
             else:
                 command = ['samtools', 'view', '-h', f'{self.bam_file_path}', *(regions_str.split())]
                 p1 = sp.Popen(command, stdout=sp.PIPE)
-            log.info(' '.join(command) + ' |')
+            log.debug(' '.join(command) + ' |')
             
             command = ['samtools', 'fasta', '-']
-            log.info(' '.join(command) + ' |')
+            log.debug(' '.join(command) + ' |')
             p2 = sp.Popen(command, stdin=p1.stdout, stdout=sp.PIPE)
             p1.stdout.close()  # Allow p1 to receive a SIGPIPE if p2 exits.
 
             command = ['sed', '-E', r"s;/;-;"]
-            log.info(' '.join(command) + '\n')
+            log.debug(' '.join(command) + '\n')
             p3 = sp.Popen(command, stdin=p2.stdout, stdout=f_out)
             p2.stdout.close()  # Allow p2 to receive a SIGPIPE if p3 exits.
             
@@ -133,7 +134,7 @@ class BamFilter(ABC):
                 command = f"samtools fasta -f 0x4 --reference {self.reference_fasta_path} {self.bam_file_path} | sed -E " + r's,/(.),-\1-un,' + f" >> {self.output_path}"
             else:
                 command = f"samtools fasta -f 0x4 {self.bam_file_path} | sed -E " + r's,/(.),-\1-un,' + f" >> {self.output_path}"
-            log.info(f"Extracting unmapped alignments using \n {command}")
+            log.debug(f"Extracting unmapped alignments using \n {command}")
             with open(self.output_path, 'a') as f_out:
                 if self.file_type == 'rc':
                     _env = {'REF_PATH': self.reference_fasta_path}
@@ -147,6 +148,14 @@ class BamFilter(ABC):
 
             self.print_read_count()
 
+    def delete_extracted_reads(self):
+        """Deletes the extracted reads FASTA file."""
+        try:
+            os.remove(self.output_path)
+            log.debug(f"Deleted extracted reads file: {self.output_path}")
+        except OSError as e:
+            log.warn(f"Could not delete extracted reads file: {str(e)}")
+
     def recruit_reads(self, regions=None, unmapped=True):
         ''' Extracts reads mapping to self.regions_to_extract or regions
         '''
@@ -154,7 +163,7 @@ class BamFilter(ABC):
             if os.path.isfile(self.output_path) or os.path.islink(self.output_path):
                 log.warn(f'output_path {self.output_path} already exists... Not recruiting reads')
                 self.print_read_count()
-                return
+                return list(SeqIO.parse(self.output_path, 'fasta'))
         except sp.CalledProcessError: # file could not be read by `wc -l`
             log.error(f"Could not load reads from {self.output_path}, recruiting reads from BAM...")
 
@@ -169,11 +178,15 @@ class BamFilter(ABC):
         for chrom, start, end in regions:
             try:
                 new_chrom = self.find_chrom_id(chrom)
-                log.info(f"Recruiting reads from {new_chrom}...")
+                log.debug(f"Recruiting reads from {new_chrom}...")
                 regions_str += f'{new_chrom}:{start}-{end} '
             except KeyError as e2:
-                log.info(f"Contig {chrom} not present in alignment file")
+                log.warn(f"Contig {chrom} not present in alignment file")
         self.extract_reads(regions_str, unmapped)
+        
+        reads = list(SeqIO.parse(self.output_path, 'fasta'))
+            
+        return reads
 
     def find_chrom_id(self, chrom_id):
         '''Takes a chromosome id and finds the matching id that is used in self.bam using self.alt_ids
@@ -205,7 +218,7 @@ class BamFilter(ABC):
         try:
             new_chrom = self.find_chrom_id(chrom)
         except KeyError:
-            log.info(f"Contig {chrom} not present in alignment file")
+            log.warn(f"Contig {chrom} not present in alignment file")
             raise
 
         region_mappings = self.bam.fetch(new_chrom, start, end)

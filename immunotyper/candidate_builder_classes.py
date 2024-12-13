@@ -148,7 +148,7 @@ class FlankingCandidate(LandmarkCandidate):
     saving them as attributes
     """
 
-    def __init__(self, name, allele_db, mapper=BowtieWrapper(params='--end-to-end --very-sensitive -f  --n-ceil C,100,0 --np 0 --ignore-quals --mp 2,2 --score-min C,-50,0 -L 10',
+    def __init__(self, name, allele_db, mapper=BowtieWrapper(params='--end-to-end --very-sensitive --n-ceil C,100,0 --np 0 --ignore-quals --mp 2,2 --score-min C,-50,0 -L 10',
                                                             output_sorted_bam=True)):
         super().__init__(name, allele_db)
         
@@ -230,7 +230,7 @@ class CandidateBuilder(object):
         self.candidate_class = candidate_class
     
     def make_candidates(self, reads):
-        log.info('Adding candidates to reads...')
+        log.debug('Adding candidates to reads...')
         self.input_reads = reads
         self.candidates = {}
         for read in reads:
@@ -246,10 +246,10 @@ class CandidateBuilder(object):
                         candidate = self.candidate_class(allele, self.allele_db)
                         self.candidates[allele] = candidate
                     except AttributeError as e:
-                        log.info(f'Unable to make candidate {allele} (length={len(self.allele_db[allele])})\n{str(e)}')
+                        log.warn(f'Unable to make candidate {allele} (length={len(self.allele_db[allele])})\n{str(e)}')
                         raise
                     except LandmarksNotSetError:
-                        log.info(f"Landmarks not set for {allele}, skipping...")
+                        log.warn(f"Landmarks not set for {allele}, skipping...")
                         continue
                 candidate.add_read(read)
                 
@@ -258,7 +258,7 @@ class CandidateBuilder(object):
                 except AttributeError:
                     read.candidates = [candidate]
 
-        log.info(f"Made {len(self.candidates)} candidates with {len([rc for c in self.candidates.values() for rc in c.reads])} read-allele pairs")
+        log.debug(f"Made {len(self.candidates)} candidates with {len([rc for c in self.candidates.values() for rc in c.reads])} read-allele pairs")
 
         return list(self.candidates.values())
 
