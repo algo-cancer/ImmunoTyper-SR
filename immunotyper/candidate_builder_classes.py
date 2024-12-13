@@ -148,7 +148,7 @@ class FlankingCandidate(LandmarkCandidate):
     saving them as attributes
     """
 
-    def __init__(self, name, allele_db, mapper=BowtieWrapper(params='--end-to-end --very-sensitive -f  --n-ceil C,100,0 --np 0 --ignore-quals --mp 2,2 --score-min C,-50,0 -L 10',
+    def __init__(self, name, allele_db, mapper=BowtieWrapper(params='--end-to-end --very-sensitive --n-ceil C,100,0 --np 0 --ignore-quals --mp 2,2 --score-min C,-50,0 -L 10',
                                                             output_sorted_bam=True)):
         super().__init__(name, allele_db)
         
