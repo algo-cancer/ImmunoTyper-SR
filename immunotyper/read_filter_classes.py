@@ -312,7 +312,7 @@ class BwaFlankingDatabaseFilter(FlankingDatabaseFilter):
 
 class BowtieFlankingDatabaseFilter(FlankingDatabaseFilter):
     def __init__(self, allele_db, mapping_params=None, reference_path=None, write_cache_path=None, load_cache_path=None, minimum_coding_bases=50):
-        super().__init__(allele_db, BowtieWrapper(params='-a --end-to-end --very-sensitive -f  --n-ceil C,100,0 --np 0 --ignore-quals --mp 2,2 --score-min C,-50,0 -L 10', output_path=write_cache_path), mapping_params, reference_path, write_cache_path, load_cache_path, minimum_coding_bases)
+        super().__init__(allele_db, BowtieWrapper(params='-a --end-to-end --very-sensitive --n-ceil C,100,0 --np 0 --ignore-quals --mp 2,2 --score-min C,-50,0 -L 10', output_path=write_cache_path), mapping_params, reference_path, write_cache_path, load_cache_path, minimum_coding_bases)
 
 
 class TtnMappingFilter(FlankingFilter):
