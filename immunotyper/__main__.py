@@ -197,7 +197,7 @@ def run_immunotyper(bam_path: str,  ref: str='',
                                     write_cache_path = write_cache_path if write_cache_path else None,
                                     load_cache_path = write_cache_path if write_cache_path else None)
                                    
-    positive, negative = flanking_filter.filter_reads(bam_filter.output_path, mapping_params="-a --end-to-end --very-sensitive -f  --n-ceil C,100,0 --np 0 --ignore-quals --mp 2,2 --score-min C,-50,0 -L 10")
+    positive, negative = flanking_filter.filter_reads(bam_filter.output_path, mapping_params="-a --end-to-end --very-sensitive --n-ceil C,100,0 --np 0 --ignore-quals --mp 2,2 --score-min C,-50,0 -L 10")
     log.info(f"Found {len(positive)} candidate {gene_type.upper()} reads for analysis")
     for r in positive: r.allele_db = allele_db
     
